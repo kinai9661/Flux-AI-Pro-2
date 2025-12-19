@@ -13,8 +13,8 @@ binding = "AI"
 [vars]
 WORKER_VERSION = "10.0.0-ui-upgrade"
 DEFAULT_MODEL = "Z-Image-Turbo"
-MAX_WIDTH = 2048
-MAX_HEIGHT = 2048
+MAX_WIDTH = 4096
+MAX_HEIGHT = 4096
 MAX_TIMEOUT = 120000
 ENVIRONMENT = "production"
 API_ENDPOINT = "https://gen.pollinations.ai"
