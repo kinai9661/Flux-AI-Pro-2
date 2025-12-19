@@ -16,13 +16,13 @@ function App() {
   const [darkMode, setDarkMode] = useState(true)
   const [activeTab, setActiveTab] = useState<'generate' | 'history'>('generate')
   
-  // 生成参数状态
+  // 生成参数状态 - 默认 ZIMAGE 模型
   const [prompt, setPrompt] = useState('')
   const [negativePrompt, setNegativePrompt] = useState('')
-  const [model, setModel] = useState<'zimage' | 'flux' | 'turbo' | 'kontext'>('flux')
+  const [model, setModel] = useState<'zimage' | 'flux' | 'turbo' | 'kontext'>('zimage')
   const [width, setWidth] = useState(1024)
   const [height, setHeight] = useState(1024)
-  const [selectedRatio, setSelectedRatio] = useState('square')
+  const [selectedRatio, setSelectedRatio] = useState('square-1k')
   const [seed, setSeed] = useState(-1)
   const [selectedStyle, setSelectedStyle] = useState<string | undefined>(undefined)
   const [currentStyle, setCurrentStyle] = useState<Style | undefined>(undefined)
@@ -120,7 +120,7 @@ function App() {
       '3072x4096': 'portrait-4k',
       '4096x3072': 'landscape-4k',
     }
-    setSelectedRatio(ratioMap[ratio] || 'square')
+    setSelectedRatio(ratioMap[ratio] || 'square-1k')
     
     // 切换到生成页面
     setActiveTab('generate')
