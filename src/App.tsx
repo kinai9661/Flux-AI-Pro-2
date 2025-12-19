@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Sparkles, Settings, Moon, Sun, Image as ImageIcon, History, ChevronDown, ChevronUp, AlertCircle } from 'lucide-react'
+import { Sparkles, Settings, Moon, Sun, Image as ImageIcon, History, ChevronDown, ChevronUp, AlertCircle, Clock } from 'lucide-react'
 import { useLanguage } from './contexts/LanguageContext'
 import { LanguageSwitch } from './components/LanguageSwitch'
 import { EnhancedStyleSelector } from './components/EnhancedStyleSelector'
@@ -29,6 +29,8 @@ function App() {
   const [isGenerating, setIsGenerating] = useState(false)
   const [generatedImage, setGeneratedImage] = useState<string | null>(null)
   const [retryInfo, setRetryInfo] = useState<{ attempt: number; maxAttempts: number; waitTime: number } | null>(null)
+  const [generationTime, setGenerationTime] = useState<number>(0)
+  const [elapsedTime, setElapsedTime] = useState<number>(0)
   
   // UI 状态
   const [showAdvanced, setShowAdvanced] = useState(false)
@@ -38,6 +40,21 @@ function App() {
   useEffect(() => {
     document.documentElement.classList.add('dark')
   }, [])
+
+  // 计时器
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null
+    if (isGenerating) {
+      interval = setInterval(() => {
+        setElapsedTime(prev => prev + 0.1)
+      }, 100)
+    } else {
+      setElapsedTime(0)
+    }
+    return () => {
+      if (interval) clearInterval(interval)
+    }
+  }, [isGenerating])
 
   // 切换主题
   const toggleTheme = () => {
@@ -69,6 +86,35 @@ function App() {
     if (params.seed !== undefined) setSeed(params.seed)
   }
 
+  // 从历史记录加载参数
+  const handleLoadFromHistory = (item: HistoryItem) => {
+    setPrompt(item.prompt)
+    setNegativePrompt(item.negative_prompt || '')
+    setModel(item.model)
+    setWidth(item.width)
+    setHeight(item.height)
+    setSeed(item.seed || -1)
+    setSelectedStyle(item.style)
+    setQualityMode(item.quality_mode)
+    
+    // 设置比例
+    const ratio = `${item.width}x${item.height}`
+    const ratioMap: Record<string, string> = {
+      '1024x1024': 'square',
+      '1024x1536': 'portrait',
+      '1536x1024': 'landscape',
+      '768x1344': 'portrait-tall',
+      '1344x768': 'landscape-wide',
+    }
+    setSelectedRatio(ratioMap[ratio] || 'square')
+    
+    // 切换到生成页面
+    setActiveTab('generate')
+    
+    // 提示用户
+    alert(language === 'zh-TW' ? '參數已載入，可以直接生成' : 'Parameters loaded, ready to generate')
+  }
+
   // 生成图片（带重试）
   const handleGenerate = async () => {
     if (!prompt.trim()) {
@@ -79,17 +125,16 @@ function App() {
     setIsGenerating(true)
     setGeneratedImage(null)
     setRetryInfo(null)
+    setGenerationTime(0)
     const startTime = Date.now()
-    const maxRetries = 2 // 最多2次重试
-    const retryDelay = 15000 // 15秒间隔
+    const maxRetries = 2
+    const retryDelay = 15000
 
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
-        // 构建请求
         let finalPrompt = prompt
         let finalNegativePrompt = negativePrompt
 
-        // 如果选了风格，添加风格提示词
         if (currentStyle) {
           finalPrompt = `${prompt}, ${currentStyle.prompt}`
           if (currentStyle.negativePrompt) {
@@ -116,7 +161,6 @@ function App() {
           }),
         })
 
-        // 处理 429 错误
         if (response.status === 429) {
           if (attempt < maxRetries) {
             setRetryInfo({ attempt: attempt + 1, maxAttempts: maxRetries, waitTime: retryDelay })
@@ -136,7 +180,6 @@ function App() {
           throw new Error(error.error?.message || t('alert.error'))
         }
 
-        // 单图直接返回 blob
         const contentType = response.headers.get('content-type')
         let imageUrl: string
         
@@ -152,10 +195,11 @@ function App() {
           }
         }
 
+        const finalTime = Date.now() - startTime
         setGeneratedImage(imageUrl)
         setRetryInfo(null)
+        setGenerationTime(finalTime)
 
-        // 保存到历史
         const historyItem: HistoryItem = {
           id: Date.now().toString(),
           timestamp: Date.now(),
@@ -168,7 +212,7 @@ function App() {
           style: selectedStyle,
           quality_mode: qualityMode,
           result_image: imageUrl,
-          generation_time: Date.now() - startTime,
+          generation_time: finalTime,
         }
 
         const history = JSON.parse(localStorage.getItem('flux-ai-history') || '[]')
@@ -176,7 +220,10 @@ function App() {
         if (history.length > 100) history.pop()
         localStorage.setItem('flux-ai-history', JSON.stringify(history))
 
-        break // 成功，退出循环
+        // 触发历史面板更新
+        window.dispatchEvent(new Event('storage'))
+
+        break
 
       } catch (error) {
         console.error('Generation error:', error)
@@ -197,7 +244,6 @@ function App() {
   return (
     <div className={darkMode ? 'dark' : ''}>
       <div className="min-h-screen bg-background">
-        {/* 头部 */}
         <header className="border-b bg-card sticky top-0 z-40">
           <div className="container mx-auto px-4 py-4">
             <div className="flex items-center justify-between">
@@ -220,7 +266,6 @@ function App() {
               </div>
             </div>
 
-            {/* Tabs 切换 */}
             <div className="flex gap-4 mt-4">
               <button
                 onClick={() => setActiveTab('generate')}
@@ -248,17 +293,12 @@ function App() {
           </div>
         </header>
 
-        {/* 主内容 */}
         <main className="container mx-auto px-4 py-6">
           {activeTab === 'generate' ? (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* 左侧：提示词 + 预设 */}
               <div className="lg:col-span-1 space-y-4">
-                {/* 提示词面板 */}
                 <div className="border rounded-lg p-4 bg-card">
                   <h2 className="font-semibold mb-4">{t('prompt.title')}</h2>
-
-                  {/* 正面提示词 */}
                   <div className="space-y-2 mb-4">
                     <label className="text-sm font-medium">{t('prompt.positive')}</label>
                     <textarea
@@ -272,8 +312,6 @@ function App() {
                       {prompt.length}/1000 {t('prompt.charCount')}
                     </p>
                   </div>
-
-                  {/* 负面提示词 */}
                   <div className="space-y-2">
                     <label className="text-sm font-medium">{t('prompt.negative')}</label>
                     <textarea
@@ -286,7 +324,6 @@ function App() {
                   </div>
                 </div>
 
-                {/* 预设管理 */}
                 <div className="border rounded-lg p-4 bg-card">
                   <PresetManager
                     currentParams={{
@@ -304,7 +341,6 @@ function App() {
                 </div>
               </div>
 
-              {/* 中间：生成结果 */}
               <div className="lg:col-span-1">
                 <div className="border rounded-lg p-4 bg-card sticky top-24">
                   <div 
@@ -324,13 +360,23 @@ function App() {
                       </div>
                     )}
                   </div>
-                  {generatedImage && (
-                    <p className="text-xs text-center text-primary/60 mt-2">
+                  
+                  {/* 生成时间显示 */}
+                  {generatedImage && generationTime > 0 && (
+                    <div className="flex items-center justify-center gap-2 mt-2 text-xs text-primary/60">
+                      <Clock className="w-3 h-3" />
+                      <span>
+                        {language === 'zh-TW' ? '生成耗時' : 'Time'}: {(generationTime / 1000).toFixed(1)}s
+                      </span>
+                    </div>
+                  )}
+                  
+                  {generatedImage && !isGenerating && (
+                    <p className="text-xs text-center text-primary/60 mt-1">
                       {language === 'zh-TW' ? '點擊放大查看' : 'Click to enlarge'}
                     </p>
                   )}
                   
-                  {/* 生成按钮 */}
                   <button
                     onClick={handleGenerate}
                     disabled={isGenerating}
@@ -341,7 +387,7 @@ function App() {
                         <span className="animate-spin">⏳</span>
                         {retryInfo 
                           ? (language === 'zh-TW' ? `重試中 (${retryInfo.attempt}/${retryInfo.maxAttempts})` : `Retrying (${retryInfo.attempt}/${retryInfo.maxAttempts})`)
-                          : t('button.generating')
+                          : `${language === 'zh-TW' ? '生成中' : 'Generating'}... ${elapsedTime.toFixed(1)}s`
                         }
                       </>
                     ) : (
@@ -352,7 +398,6 @@ function App() {
                     )}
                   </button>
                   
-                  {/* 重试提示 */}
                   {retryInfo && isGenerating && (
                     <div className="mt-3 p-2 bg-amber-500/10 border border-amber-500/20 rounded-md flex items-start gap-2">
                       <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
@@ -372,7 +417,6 @@ function App() {
                 </div>
               </div>
 
-              {/* 右侧：参数面板 */}
               <div className="lg:col-span-1 space-y-4">
                 <div className="border rounded-lg p-4 bg-card">
                   <div className="flex items-center gap-2 mb-4">
@@ -380,7 +424,6 @@ function App() {
                     <h2 className="font-semibold">{t('params.title')}</h2>
                   </div>
 
-                  {/* 模型选择 */}
                   <div className="space-y-2 mb-4">
                     <label className="text-sm font-medium">{t('params.model')}</label>
                     <select
@@ -395,13 +438,11 @@ function App() {
                     </select>
                   </div>
 
-                  {/* 比例选择 */}
                   <AspectRatioSelector
                     value={selectedRatio}
                     onChange={handleRatioChange}
                   />
 
-                  {/* 质量模式 */}
                   <div className="space-y-2 mb-4">
                     <label className="text-sm font-medium">{t('params.quality')}</label>
                     <select
@@ -415,13 +456,11 @@ function App() {
                     </select>
                   </div>
 
-                  {/* 风格选择 */}
                   <EnhancedStyleSelector
                     value={selectedStyle}
                     onChange={handleStyleChange}
                   />
 
-                  {/* 高级参数（折叠） */}
                   <div className="mt-4">
                     <button
                       onClick={() => setShowAdvanced(!showAdvanced)}
@@ -460,14 +499,12 @@ function App() {
               </div>
             </div>
           ) : (
-            /* 历史记录页面 */
             <div className="h-[calc(100vh-16rem)]">
-              <HistoryPanel />
+              <HistoryPanel onLoadParams={handleLoadFromHistory} />
             </div>
           )}
         </main>
 
-        {/* 底部 */}
         <footer className="border-t mt-8 py-6 bg-card">
           <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
             <p>{t('footer.poweredBy')}</p>
@@ -475,7 +512,6 @@ function App() {
           </div>
         </footer>
 
-        {/* 高级图片查看器 */}
         {showImageViewer && generatedImage && (
           <ImageViewer
             image={generatedImage}

@@ -1,15 +1,18 @@
 import { useState, useEffect } from 'react'
-import { Trash2, Download } from 'lucide-react'
+import { Trash2, Download, RotateCcw } from 'lucide-react'
 import { useLanguage } from '../contexts/LanguageContext'
 import { ImageViewer } from './ImageViewer'
 import type { HistoryItem } from '../types'
 
-export function HistoryPanel() {
+interface HistoryPanelProps {
+  onLoadParams?: (item: HistoryItem) => void
+}
+
+export function HistoryPanel({ onLoadParams }: HistoryPanelProps) {
   const { language } = useLanguage()
   const [history, setHistory] = useState<HistoryItem[]>([])
   const [selectedImage, setSelectedImage] = useState<{ image: string; index: number } | null>(null)
 
-  // 加载历史记录
   useEffect(() => {
     const loadHistory = () => {
       const stored = localStorage.getItem('flux-ai-history')
@@ -18,20 +21,16 @@ export function HistoryPanel() {
       }
     }
     loadHistory()
-
-    // 监听 storage 变化
     window.addEventListener('storage', loadHistory)
     return () => window.removeEventListener('storage', loadHistory)
   }, [])
 
-  // 删除单条记录
   const handleDelete = (id: string) => {
     const newHistory = history.filter(item => item.id !== id)
     setHistory(newHistory)
     localStorage.setItem('flux-ai-history', JSON.stringify(newHistory))
   }
 
-  // 清空所有记录
   const handleClearAll = () => {
     if (confirm(language === 'zh-TW' ? '確定要清空所有歷史記錄嗎？' : 'Clear all history?')) {
       setHistory([])
@@ -39,7 +38,6 @@ export function HistoryPanel() {
     }
   }
 
-  // 下载图片
   const handleDownload = (item: HistoryItem) => {
     if (item.result_image) {
       const a = document.createElement('a')
@@ -49,13 +47,11 @@ export function HistoryPanel() {
     }
   }
 
-  // 格式化时间
   const formatTime = (timestamp: number) => {
     const date = new Date(timestamp)
     return date.toLocaleString(language === 'zh-TW' ? 'zh-TW' : 'en-US')
   }
 
-  // 导航到其他图片
   const handleNavigate = (index: number) => {
     if (history[index]?.result_image) {
       setSelectedImage({ image: history[index].result_image!, index })
@@ -79,7 +75,6 @@ export function HistoryPanel() {
 
   return (
     <div className="space-y-4">
-      {/* 顶部操作栏 */}
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-primary">
           {language === 'zh-TW' ? '歷史記錄' : 'History'} ({history.length})
@@ -92,14 +87,12 @@ export function HistoryPanel() {
         </button>
       </div>
 
-      {/* 历史记录网格 */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 overflow-y-auto max-h-[calc(100vh-20rem)]">
         {history.map((item, index) => (
           <div
             key={item.id}
             className="border rounded-lg p-3 bg-card hover:border-primary/50 transition-colors"
           >
-            {/* 图片预览 */}
             {item.result_image && (
               <div 
                 className="aspect-square bg-muted rounded-lg mb-3 overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
@@ -113,7 +106,6 @@ export function HistoryPanel() {
               </div>
             )}
 
-            {/* 信息 */}
             <div className="space-y-2">
               <p className="text-sm text-primary/80 line-clamp-2">
                 {item.prompt}
@@ -122,25 +114,37 @@ export function HistoryPanel() {
                 <span>{item.model.toUpperCase()}</span>
                 <span>{item.width}×{item.height}</span>
               </div>
+              {item.generation_time && (
+                <p className="text-xs text-primary/60">
+                  {language === 'zh-TW' ? '耗時' : 'Time'}: {(item.generation_time / 1000).toFixed(1)}s
+                </p>
+              )}
               <p className="text-xs text-primary/50">
                 {formatTime(item.timestamp)}
               </p>
 
-              {/* 操作按钮 */}
-              <div className="flex gap-2 pt-2">
+              <div className="grid grid-cols-3 gap-2 pt-2">
+                <button
+                  onClick={() => onLoadParams?.(item)}
+                  className="px-2 py-1.5 text-xs bg-primary/10 text-primary rounded hover:bg-primary/20 transition-colors flex items-center justify-center gap-1"
+                  title={language === 'zh-TW' ? '重用參數' : 'Reuse'}
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  {language === 'zh-TW' ? '重用' : 'Reuse'}
+                </button>
                 <button
                   onClick={() => handleDownload(item)}
-                  className="flex-1 px-2 py-1.5 text-xs bg-primary/10 text-primary rounded hover:bg-primary/20 transition-colors flex items-center justify-center gap-1"
+                  className="px-2 py-1.5 text-xs bg-primary/10 text-primary rounded hover:bg-primary/20 transition-colors flex items-center justify-center gap-1"
+                  title={language === 'zh-TW' ? '下載' : 'Download'}
                 >
                   <Download className="w-3 h-3" />
-                  {language === 'zh-TW' ? '下載' : 'Download'}
                 </button>
                 <button
                   onClick={() => handleDelete(item.id)}
-                  className="flex-1 px-2 py-1.5 text-xs bg-destructive/10 text-destructive rounded hover:bg-destructive/20 transition-colors flex items-center justify-center gap-1"
+                  className="px-2 py-1.5 text-xs bg-destructive/10 text-destructive rounded hover:bg-destructive/20 transition-colors flex items-center justify-center gap-1"
+                  title={language === 'zh-TW' ? '刪除' : 'Delete'}
                 >
                   <Trash2 className="w-3 h-3" />
-                  {language === 'zh-TW' ? '刪除' : 'Delete'}
                 </button>
               </div>
             </div>
@@ -148,7 +152,6 @@ export function HistoryPanel() {
         ))}
       </div>
 
-      {/* 图片查看器 */}
       {selectedImage && (
         <ImageViewer
           image={selectedImage.image}
