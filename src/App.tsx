@@ -138,26 +138,20 @@ function App() {
     // 检测是否包含中文字符
     const hasChinese = /[\u4e00-\u9fa5]/.test(text)
     if (!hasChinese) {
-      return text // 如果没有中文，直接返回原文
+      return text
     }
 
     try {
-      const response = await fetch('/api/translate', {
+      const T = await fetch('/api/translate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text }),
       })
 
-      if (!response.ok) {
-        console.error('Translation failed:', response.status, await response.text())
-        return text // 翻译失败时返回原文
-      }
-
-      const data = await response.json()
-      return data.translated || text
+      return T.ok ? (await T.json()).translated || text : (console.error('Translation failed:', T.status, await T.text()), text)
     } catch (error) {
       console.error('Translation error:', error)
-      return text // 出错时返回原文
+      return text
     }
   }
 
