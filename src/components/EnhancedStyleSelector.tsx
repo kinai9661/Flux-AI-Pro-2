@@ -1,283 +1,159 @@
 import { useState } from 'react'
-import { Search, Sparkles, Star, Clock, X, ChevronDown, ChevronRight } from 'lucide-react'
-import { styleCategories, getAllStyles, getPopularStyles, type Style } from '../data/styles'
+import { ChevronDown, ChevronUp } from 'lucide-react'
 import { useLanguage } from '../contexts/LanguageContext'
+import type { Style } from '../types'
 
 interface EnhancedStyleSelectorProps {
   value?: string
   onChange: (styleId: string | undefined, style?: Style) => void
 }
 
+interface StyleGroup {
+  id: string
+  name: string
+  nameEn: string
+  styles: Style[]
+}
+
+// 精简分组的风格
+const styleGroups: StyleGroup[] = [
+  {
+    id: 'realistic',
+    name: '写实风格',
+    nameEn: 'Realistic',
+    styles: [
+      { id: 'natural', name: '自然光', nameEn: 'Natural Light', prompt: 'natural lighting, realistic, high detail, photorealistic' },
+      { id: 'cinematic', name: '电影级', nameEn: 'Cinematic', prompt: 'cinematic lighting, dramatic, film grain, professional photography' },
+      { id: 'studio', name: '工作室', nameEn: 'Studio', prompt: 'studio lighting, professional, clean, sharp focus' },
+    ]
+  },
+  {
+    id: 'anime',
+    name: '动漫风格',
+    nameEn: 'Anime',
+    styles: [
+      { id: 'anime-jp', name: '日式动漫', nameEn: 'Japanese Anime', prompt: 'anime style, cel shading, vibrant colors, manga' },
+      { id: 'anime-us', name: '美式卡通', nameEn: 'Western Cartoon', prompt: 'western animation, cartoon style, bold lines' },
+      { id: 'chibi', name: 'Q版', nameEn: 'Chibi', prompt: 'chibi, cute, kawaii, super deformed' },
+    ]
+  },
+  {
+    id: 'art',
+    name: '艺术风格',
+    nameEn: 'Artistic',
+    styles: [
+      { id: 'oil', name: '油画', nameEn: 'Oil Painting', prompt: 'oil painting, artistic, brushstrokes, canvas texture' },
+      { id: 'watercolor', name: '水彩', nameEn: 'Watercolor', prompt: 'watercolor, soft, flowing colors, paper texture' },
+      { id: 'sketch', name: '素描', nameEn: 'Sketch', prompt: 'pencil sketch, hand drawn, monochrome, artistic' },
+    ]
+  },
+  {
+    id: 'digital',
+    name: '数字艺术',
+    nameEn: 'Digital Art',
+    styles: [
+      { id: 'pixel', name: '像素艺术', nameEn: 'Pixel Art', prompt: 'pixel art, retro, 8bit, pixelated' },
+      { id: 'cyberpunk', name: '赛博朋克', nameEn: 'Cyberpunk', prompt: 'cyberpunk, neon lights, futuristic, sci-fi' },
+      { id: 'vaporwave', name: '蒸汽波', nameEn: 'Vaporwave', prompt: 'vaporwave, aesthetic, pastel colors, retro futuristic' },
+    ]
+  },
+]
+
 export function EnhancedStyleSelector({ value, onChange }: EnhancedStyleSelectorProps) {
   const { language } = useLanguage()
-  const [searchQuery, setSearchQuery] = useState('')
-  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set(['all']))
-  const [favorites, setFavorites] = useState<Set<string>>(() => {
-    const stored = localStorage.getItem('flux-ai-favorite-styles')
-    return new Set(stored ? JSON.parse(stored) : [])
-  })
-  const [recentStyles, setRecentStyles] = useState<string[]>(() => {
-    const stored = localStorage.getItem('flux-ai-recent-styles')
-    return stored ? JSON.parse(stored) : []
-  })
+  const [expandedGroups, setExpandedGroups] = useState<string[]>(['realistic'])
 
-  const popularStyles = getPopularStyles()
-  const selectedStyle = value ? getAllStyles().find(s => s.id === value) : undefined
+  const toggleGroup = (groupId: string) => {
+    setExpandedGroups(prev => 
+      prev.includes(groupId)
+        ? prev.filter(id => id !== groupId)
+        : [...prev, groupId]
+    )
+  }
 
-  // 切换收藏
-  const toggleFavorite = (styleId: string) => {
-    const newFavorites = new Set(favorites)
-    if (newFavorites.has(styleId)) {
-      newFavorites.delete(styleId)
+  const handleStyleSelect = (style: Style) => {
+    if (value === style.id) {
+      // 取消选择
+      onChange(undefined, undefined)
     } else {
-      newFavorites.add(styleId)
+      onChange(style.id, style)
     }
-    setFavorites(newFavorites)
-    localStorage.setItem('flux-ai-favorite-styles', JSON.stringify([...newFavorites]))
   }
 
-  // 选择风格
-  const handleSelectStyle = (style: Style) => {
-    onChange(style.id, style)
-    
-    // 更新最近使用
-    const newRecent = [style.id, ...recentStyles.filter(id => id !== style.id)].slice(0, 5)
-    setRecentStyles(newRecent)
-    localStorage.setItem('flux-ai-recent-styles', JSON.stringify(newRecent))
+  const handleClear = () => {
+    onChange(undefined, undefined)
   }
-
-  // 切换分类展开
-  const toggleCategory = (categoryId: string) => {
-    const newExpanded = new Set(expandedCategories)
-    if (newExpanded.has(categoryId)) {
-      newExpanded.delete(categoryId)
-    } else {
-      newExpanded.add(categoryId)
-    }
-    setExpandedCategories(newExpanded)
-  }
-
-  const recentStyleObjects = recentStyles
-    .map(id => getAllStyles().find(s => s.id === id))
-    .filter(Boolean) as Style[]
-
-  const favoriteStyleObjects = [...favorites]
-    .map(id => getAllStyles().find(s => s.id === id))
-    .filter(Boolean) as Style[]
 
   return (
-    <div className="space-y-3">
-      <label className="text-sm font-medium text-primary">
-        {language === 'zh-TW' ? '藝術風格' : 'Art Style'}
-      </label>
-
-      {/* 当前选中显示 */}
-      <div className="relative">
-        <div className="w-full px-3 py-2 border border-primary/30 rounded-md bg-background/50 flex items-center justify-between hover:border-primary/50 transition-colors">
-          {selectedStyle ? (
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-primary/90">
-                {language === 'zh-TW' ? selectedStyle.name : selectedStyle.nameEn}
-              </span>
-              <button
-                onClick={() => onChange(undefined)}
-                className="p-0.5 hover:bg-destructive/10 rounded text-destructive"
-              >
-                <X className="w-3 h-3" />
-              </button>
-            </div>
-          ) : (
-            <span className="text-sm text-muted-foreground">
-              {language === 'zh-TW' ? '選擇風格' : 'Select Style'}
+    <div className="space-y-2 mb-4">
+      <div className="flex items-center justify-between">
+        <label className="text-sm font-medium">
+          {language === 'zh-TW' ? '艺术风格' : 'Art Style'}
+          {value && (
+            <span className="ml-2 text-xs text-primary">
+              ({language === 'zh-TW' ? '已选择' : 'Selected'})
             </span>
           )}
-        </div>
+        </label>
+        {value && (
+          <button
+            onClick={handleClear}
+            className="text-xs text-muted-foreground hover:text-foreground"
+          >
+            {language === 'zh-TW' ? '清除' : 'Clear'}
+          </button>
+        )}
       </div>
 
-      {/* 搜索框 */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-primary/50" />
-        <input
-          type="text"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder={language === 'zh-TW' ? '搜尋風格...' : 'Search styles...'}
-          className="w-full pl-10 pr-4 py-2 border border-primary/30 rounded-md bg-background/50 text-primary placeholder:text-primary/40"
-        />
-      </div>
-
-      {/* 最近使用 */}
-      {recentStyleObjects.length > 0 && !searchQuery && (
-        <div className="space-y-2">
-          <div className="flex items-center gap-2 text-sm">
-            <Clock className="w-4 h-4 text-primary" />
-            <span className="font-medium text-primary">
-              {language === 'zh-TW' ? '最近使用' : 'Recent'}
-            </span>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {recentStyleObjects.map(style => (
-              <button
-                key={style.id}
-                onClick={() => handleSelectStyle(style)}
-                className={`px-3 py-1.5 text-xs rounded-full border transition-all ${
-                  value === style.id
-                    ? 'border-primary bg-primary/20 text-primary'
-                    : 'border-primary/30 bg-background/50 text-primary/80 hover:border-primary/50'
-                }`}
-              >
-                {language === 'zh-TW' ? style.name : style.nameEn}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* 收藏 */}
-      {favoriteStyleObjects.length > 0 && !searchQuery && (
-        <div className="space-y-2">
-          <div className="flex items-center gap-2 text-sm">
-            <Star className="w-4 h-4 text-primary fill-primary" />
-            <span className="font-medium text-primary">
-              {language === 'zh-TW' ? '我的收藏' : 'Favorites'}
-            </span>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {favoriteStyleObjects.map(style => (
-              <button
-                key={style.id}
-                onClick={() => handleSelectStyle(style)}
-                className={`px-3 py-1.5 text-xs rounded-full border transition-all ${
-                  value === style.id
-                    ? 'border-primary bg-primary/20 text-primary'
-                    : 'border-primary/30 bg-background/50 text-primary/80 hover:border-primary/50'
-                }`}
-              >
-                {language === 'zh-TW' ? style.name : style.nameEn}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* 热门风格 */}
-      {!searchQuery && (
-        <div className="space-y-2">
-          <div className="flex items-center gap-2 text-sm">
-            <Sparkles className="w-4 h-4 text-primary" />
-            <span className="font-medium text-primary">
-              {language === 'zh-TW' ? '熱門風格' : 'Popular Styles'}
-            </span>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            {popularStyles.map(style => (
-              <button
-                key={style.id}
-                onClick={() => handleSelectStyle(style)}
-                className={`p-3 text-left border rounded-lg transition-all group ${
-                  value === style.id
-                    ? 'border-primary bg-primary/10'
-                    : 'border-primary/20 bg-background/30 hover:border-primary/50 hover:bg-primary/5'
-                }`}
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="font-medium text-sm text-primary group-hover:text-primary">
-                      {language === 'zh-TW' ? style.name : style.nameEn}
-                    </div>
-                  </div>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      toggleFavorite(style.id)
-                    }}
-                    className="p-1 hover:bg-primary/10 rounded transition-colors"
-                  >
-                    <Star
-                      className={`w-4 h-4 ${
-                        favorites.has(style.id)
-                          ? 'text-primary fill-primary'
-                          : 'text-primary/40'
-                      }`}
-                    />
-                  </button>
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* 所有分类 */}
-      <div className="space-y-2 max-h-96 overflow-y-auto">
-        {styleCategories.map(category => {
-          const categoryStyles = category.styles.filter(style => 
-            !searchQuery || 
-            style.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            style.nameEn.toLowerCase().includes(searchQuery.toLowerCase())
-          )
-
-          if (searchQuery && categoryStyles.length === 0) return null
-
-          const isExpanded = expandedCategories.has(category.id)
-
-          return (
-            <div key={category.id} className="border border-primary/20 rounded-lg overflow-hidden">
-              <button
-                onClick={() => toggleCategory(category.id)}
-                className="w-full px-3 py-2 bg-card/50 hover:bg-card/70 transition-colors flex items-center justify-between"
-              >
-                <div className="flex items-center gap-2">
-                  {isExpanded ? (
-                    <ChevronDown className="w-4 h-4 text-primary" />
-                  ) : (
-                    <ChevronRight className="w-4 h-4 text-primary" />
-                  )}
-                  <span className="font-medium text-sm text-primary">
-                    {language === 'zh-TW' ? category.name : category.nameEn}
-                  </span>
-                  <span className="text-xs text-primary/60">({categoryStyles.length})</span>
-                </div>
-              </button>
-
-              {isExpanded && (
-                <div className="p-2 space-y-1">
-                  {categoryStyles.map(style => (
-                    <button
-                      key={style.id}
-                      onClick={() => handleSelectStyle(style)}
-                      className={`w-full px-3 py-2 text-left rounded-md transition-all flex items-center justify-between group ${
-                        value === style.id
-                          ? 'bg-primary/20 text-primary'
-                          : 'hover:bg-primary/10 text-primary/80'
-                      }`}
-                    >
-                      <span className="text-sm">
-                        {language === 'zh-TW' ? style.name : style.nameEn}
-                      </span>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          toggleFavorite(style.id)
-                        }}
-                        className="p-1 opacity-0 group-hover:opacity-100 hover:bg-primary/10 rounded transition-all"
-                      >
-                        <Star
-                          className={`w-3 h-3 ${
-                            favorites.has(style.id)
-                              ? 'text-primary fill-primary'
-                              : 'text-primary/40'
-                          }`}
-                        />
-                      </button>
-                    </button>
-                  ))}
-                </div>
+      <div className="border rounded-md bg-background max-h-64 overflow-y-auto">
+        {styleGroups.map((group) => (
+          <div key={group.id} className="border-b last:border-b-0">
+            <button
+              onClick={() => toggleGroup(group.id)}
+              className="w-full px-3 py-2 flex items-center justify-between hover:bg-accent transition-colors"
+            >
+              <span className="text-sm font-medium">
+                {language === 'zh-TW' ? group.name : group.nameEn}
+                <span className="ml-2 text-xs text-muted-foreground">
+                  ({group.styles.length})
+                </span>
+              </span>
+              {expandedGroups.includes(group.id) ? (
+                <ChevronUp className="w-4 h-4" />
+              ) : (
+                <ChevronDown className="w-4 h-4" />
               )}
-            </div>
-          )
-        })}
+            </button>
+
+            {expandedGroups.includes(group.id) && (
+              <div className="px-3 pb-2">
+                {group.styles.map((style) => (
+                  <button
+                    key={style.id}
+                    onClick={() => handleStyleSelect(style)}
+                    className={`w-full text-left px-2 py-1.5 text-sm rounded transition-colors ${
+                      value === style.id
+                        ? 'bg-primary text-primary-foreground'
+                        : 'hover:bg-accent'
+                    }`}
+                  >
+                    {language === 'zh-TW' ? style.name : style.nameEn}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
       </div>
+
+      {!value && (
+        <p className="text-xs text-muted-foreground">
+          {language === 'zh-TW' 
+            ? '💡 选择风格以增强图片效果，或留空使用原始提示词'
+            : '💡 Select a style to enhance your image, or leave empty'
+          }
+        </p>
+      )}
     </div>
   )
 }
