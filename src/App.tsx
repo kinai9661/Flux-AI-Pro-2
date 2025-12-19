@@ -129,7 +129,37 @@ function App() {
     alert(language === 'zh-TW' ? '參數已載入，可以直接生成' : 'Parameters loaded, ready to generate')
   }
 
-  // 生成图片（带重试）
+  // 翻译提示词（仅中文翻英文）
+  const translatePrompt = async (text: string): Promise<string> => {
+    if (!text.trim()) return text
+    
+    // 检测是否包含中文字符
+    const hasChinese = /[\u4e00-\u9fa5]/.test(text)
+    if (!hasChinese) {
+      return text // 如果没有中文，直接返回原文
+    }
+
+    try {
+      const response = await fetch('/_internal/translate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+      })
+
+      if (!response.ok) {
+        console.error('Translation failed:', await response.text())
+        return text // 翻译失败时返回原文
+      }
+
+      const data = await response.json()
+      return data.translated || text
+    } catch (error) {
+      console.error('Translation error:', error)
+      return text // 出错时返回原文
+    }
+  }
+
+  // 生成图片（带重试和翻译）
   const handleGenerate = async () => {
     if (!prompt.trim()) {
       alert(t('alert.emptyPrompt'))
@@ -146,11 +176,15 @@ function App() {
 
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
-        let finalPrompt = prompt
-        let finalNegativePrompt = negativePrompt
+        // 翻译提示词（仅翻译中文部分）
+        const translatedPrompt = await translatePrompt(prompt)
+        const translatedNegative = negativePrompt ? await translatePrompt(negativePrompt) : ''
+
+        let finalPrompt = translatedPrompt
+        let finalNegativePrompt = translatedNegative
 
         if (currentStyle) {
-          finalPrompt = `${prompt}, ${currentStyle.prompt}`
+          finalPrompt = `${translatedPrompt}, ${currentStyle.prompt}`
           if (currentStyle.negativePrompt) {
             finalNegativePrompt = finalNegativePrompt 
               ? `${finalNegativePrompt}, ${currentStyle.negativePrompt}`
