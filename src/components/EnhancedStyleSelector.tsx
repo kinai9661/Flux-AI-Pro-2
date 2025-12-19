@@ -113,6 +113,11 @@ const styleGroups: StyleGroup[] = [
       { id: 'paper-cut', name: '剪纸', nameEn: 'Paper Cut', prompt: 'paper cut art, layered, shadow, craft' },
       { id: 'stained-glass', name: '彩绘玻璃', nameEn: 'Stained Glass', prompt: 'stained glass, colorful, mosaic, religious art' },
       { id: 'origami', name: '折纸', nameEn: 'Origami', prompt: 'origami, paper folding, geometric, japanese art' },
+      { id: 'crystal', name: '水晶', nameEn: 'Crystal', prompt: 'crystal, transparent, refractive, gem-like, sparkling' },
+      { id: 'metallic', name: '金属', nameEn: 'Metallic', prompt: 'metallic, chrome, reflective, shiny, polished metal' },
+      { id: 'glow', name: '发光', nameEn: 'Glow', prompt: 'glowing, luminous, radiant, light emission, aura' },
+      { id: 'smoke', name: '烟雾', nameEn: 'Smoke', prompt: 'smoke effect, misty, ethereal, atmospheric, fog' },
+      { id: 'double-exposure', name: '双重曝光', nameEn: 'Double Exposure', prompt: 'double exposure, layered images, blend mode, artistic overlap' },
     ]
   },
 ]
