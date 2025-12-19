@@ -81,7 +81,9 @@ function App() {
     if (params.model) setModel(params.model)
     if (params.width) setWidth(params.width)
     if (params.height) setHeight(params.height)
-    if (params.quality_mode) setQualityMode(params.quality_mode)
+    if (params.quality_mode && (params.quality_mode === 'economy' || params.quality_mode === 'standard' || params.quality_mode === 'ultra')) {
+      setQualityMode(params.quality_mode)
+    }
     if (params.style) setSelectedStyle(params.style)
     if (params.negative_prompt) setNegativePrompt(params.negative_prompt)
     if (params.seed !== undefined) setSeed(params.seed)
