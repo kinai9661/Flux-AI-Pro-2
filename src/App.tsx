@@ -2,10 +2,11 @@ import { useState, useEffect } from 'react'
 import { Sparkles, Settings, Moon, Sun, Image as ImageIcon, History, ChevronDown, ChevronUp } from 'lucide-react'
 import { useLanguage } from './contexts/LanguageContext'
 import { LanguageSwitch } from './components/LanguageSwitch'
-import { StyleSelector } from './components/StyleSelector'
+import { EnhancedStyleSelector } from './components/EnhancedStyleSelector'
 import { AspectRatioSelector } from './components/AspectRatioSelector'
 import { HistoryPanel } from './components/HistoryPanel'
 import { PresetManager } from './components/PresetManager'
+import { ImageViewer } from './components/ImageViewer'
 import type { GenerateRequest, HistoryItem, Style } from './types'
 
 function App() {
@@ -29,6 +30,7 @@ function App() {
   
   // UI 状态
   const [showAdvanced, setShowAdvanced] = useState(false)
+  const [showImageViewer, setShowImageViewer] = useState(false)
 
   // 初始化时应用暗黑模式
   useEffect(() => {
@@ -279,8 +281,8 @@ function App() {
                     </select>
                   </div>
 
-                  {/* 风格选择 */}
-                  <StyleSelector
+                  {/* 风格选择 - 使用优化版本 */}
+                  <EnhancedStyleSelector
                     value={selectedStyle}
                     onChange={handleStyleChange}
                   />
@@ -345,7 +347,10 @@ function App() {
               {/* 中间：结果展示 */}
               <div className="lg:col-span-1">
                 <div className="border rounded-lg p-4 bg-card sticky top-24">
-                  <div className="aspect-square bg-muted rounded-lg flex items-center justify-center overflow-hidden">
+                  <div 
+                    className="aspect-square bg-muted rounded-lg flex items-center justify-center overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
+                    onClick={() => generatedImage && setShowImageViewer(true)}
+                  >
                     {generatedImage ? (
                       <img
                         src={generatedImage}
@@ -359,6 +364,11 @@ function App() {
                       </div>
                     )}
                   </div>
+                  {generatedImage && (
+                    <p className="text-xs text-center text-primary/60 mt-2">
+                      {language === 'zh-TW' ? '點擊放大查看' : 'Click to enlarge'}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -411,6 +421,22 @@ function App() {
             <p className="mt-2">{t('footer.copyright')}</p>
           </div>
         </footer>
+
+        {/* 高级图片查看器 */}
+        {showImageViewer && generatedImage && (
+          <ImageViewer
+            image={generatedImage}
+            onClose={() => setShowImageViewer(false)}
+            metadata={{
+              prompt,
+              model,
+              width,
+              height,
+              seed: seed !== -1 ? seed : undefined,
+              style: selectedStyle,
+            }}
+          />
+        )}
       </div>
     </div>
   )
