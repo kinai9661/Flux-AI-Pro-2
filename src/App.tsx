@@ -220,8 +220,40 @@ function App() {
         <main className="container mx-auto px-4 py-6">
           {activeTab === 'generate' ? (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* 左侧：参数面板 */}
+              {/* 左侧：提示词 + 预设 */}
               <div className="lg:col-span-1 space-y-4">
+                {/* 提示词面板 */}
+                <div className="border rounded-lg p-4 bg-card">
+                  <h2 className="font-semibold mb-4">{t('prompt.title')}</h2>
+
+                  {/* 正面提示词 */}
+                  <div className="space-y-2 mb-4">
+                    <label className="text-sm font-medium">{t('prompt.positive')}</label>
+                    <textarea
+                      value={prompt}
+                      onChange={(e) => setPrompt(e.target.value)}
+                      placeholder={t('prompt.positivePlaceholder')}
+                      className="w-full px-3 py-2 border rounded-md bg-background resize-none"
+                      rows={6}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      {prompt.length}/1000 {t('prompt.charCount')}
+                    </p>
+                  </div>
+
+                  {/* 负面提示词 */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">{t('prompt.negative')}</label>
+                    <textarea
+                      value={negativePrompt}
+                      onChange={(e) => setNegativePrompt(e.target.value)}
+                      placeholder={t('prompt.negativePlaceholder')}
+                      className="w-full px-3 py-2 border rounded-md bg-background resize-none"
+                      rows={3}
+                    />
+                  </div>
+                </div>
+
                 {/* 预设管理 */}
                 <div className="border rounded-lg p-4 bg-card">
                   <PresetManager
@@ -238,8 +270,57 @@ function App() {
                     onApplyPreset={handleApplyPreset}
                   />
                 </div>
+              </div>
 
-                {/* 基础参数 */}
+              {/* 中间：生成结果 */}
+              <div className="lg:col-span-1">
+                <div className="border rounded-lg p-4 bg-card sticky top-24">
+                  <div 
+                    className="aspect-square bg-muted rounded-lg flex items-center justify-center overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
+                    onClick={() => generatedImage && setShowImageViewer(true)}
+                  >
+                    {generatedImage ? (
+                      <img
+                        src={generatedImage}
+                        alt="Generated"
+                        className="w-full h-full object-contain"
+                      />
+                    ) : (
+                      <div className="text-center text-muted-foreground">
+                        <Sparkles className="w-16 h-16 mx-auto mb-4 opacity-20" />
+                        <p>{t('result.placeholder')}</p>
+                      </div>
+                    )}
+                  </div>
+                  {generatedImage && (
+                    <p className="text-xs text-center text-primary/60 mt-2">
+                      {language === 'zh-TW' ? '點擊放大查看' : 'Click to enlarge'}
+                    </p>
+                  )}
+                  
+                  {/* 生成按钮 */}
+                  <button
+                    onClick={handleGenerate}
+                    disabled={isGenerating}
+                    className="w-full mt-4 py-3 bg-primary text-primary-foreground rounded-lg font-semibold hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2 transition-all"
+                  >
+                    {isGenerating ? (
+                      <>
+                        <span className="animate-spin">⏳</span>
+                        {t('button.generating')}
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-5 h-5" />
+                        {t('button.generate')}
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* 右侧：参数面板 */}
+              <div className="lg:col-span-1 space-y-4">
                 <div className="border rounded-lg p-4 bg-card">
                   <div className="flex items-center gap-2 mb-4">
                     <Settings className="w-5 h-5" />
@@ -281,7 +362,7 @@ function App() {
                     </select>
                   </div>
 
-                  {/* 风格选择 - 使用优化版本 */}
+                  {/* 风格选择 */}
                   <EnhancedStyleSelector
                     value={selectedStyle}
                     onChange={handleStyleChange}
@@ -321,87 +402,6 @@ function App() {
                         </div>
                       </div>
                     )}
-                  </div>
-
-                  {/* 生成按钮 */}
-                  <button
-                    onClick={handleGenerate}
-                    disabled={isGenerating}
-                    className="w-full mt-4 py-3 bg-primary text-primary-foreground rounded-lg font-semibold hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2 transition-all"
-                  >
-                    {isGenerating ? (
-                      <>
-                        <span className="animate-spin">⏳</span>
-                        {t('button.generating')}
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="w-5 h-5" />
-                        {t('button.generate')}
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              {/* 中间：结果展示 */}
-              <div className="lg:col-span-1">
-                <div className="border rounded-lg p-4 bg-card sticky top-24">
-                  <div 
-                    className="aspect-square bg-muted rounded-lg flex items-center justify-center overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
-                    onClick={() => generatedImage && setShowImageViewer(true)}
-                  >
-                    {generatedImage ? (
-                      <img
-                        src={generatedImage}
-                        alt="Generated"
-                        className="w-full h-full object-contain"
-                      />
-                    ) : (
-                      <div className="text-center text-muted-foreground">
-                        <Sparkles className="w-16 h-16 mx-auto mb-4 opacity-20" />
-                        <p>{t('result.placeholder')}</p>
-                      </div>
-                    )}
-                  </div>
-                  {generatedImage && (
-                    <p className="text-xs text-center text-primary/60 mt-2">
-                      {language === 'zh-TW' ? '點擊放大查看' : 'Click to enlarge'}
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              {/* 右侧：提示词 */}
-              <div className="lg:col-span-1 space-y-4">
-                <div className="border rounded-lg p-4 bg-card">
-                  <h2 className="font-semibold mb-4">{t('prompt.title')}</h2>
-
-                  {/* 正面提示词 */}
-                  <div className="space-y-2 mb-4">
-                    <label className="text-sm font-medium">{t('prompt.positive')}</label>
-                    <textarea
-                      value={prompt}
-                      onChange={(e) => setPrompt(e.target.value)}
-                      placeholder={t('prompt.positivePlaceholder')}
-                      className="w-full px-3 py-2 border rounded-md bg-background resize-none"
-                      rows={8}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      {prompt.length}/1000 {t('prompt.charCount')}
-                    </p>
-                  </div>
-
-                  {/* 负面提示词 */}
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">{t('prompt.negative')}</label>
-                    <textarea
-                      value={negativePrompt}
-                      onChange={(e) => setNegativePrompt(e.target.value)}
-                      placeholder={t('prompt.negativePlaceholder')}
-                      className="w-full px-3 py-2 border rounded-md bg-background resize-none"
-                      rows={4}
-                    />
                   </div>
                 </div>
               </div>
