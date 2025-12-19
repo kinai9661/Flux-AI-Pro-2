@@ -142,14 +142,14 @@ function App() {
     }
 
     try {
-      const response = await fetch('/_internal/translate', {
+      const response = await fetch('/api/translate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text }),
       })
 
       if (!response.ok) {
-        console.error('Translation failed:', await response.text())
+        console.error('Translation failed:', response.status, await response.text())
         return text // 翻译失败时返回原文
       }
 
