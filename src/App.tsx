@@ -1,7 +1,10 @@
 import { useState } from 'react'
 import { Sparkles, Settings, Moon, Sun } from 'lucide-react'
+import { useLanguage } from './contexts/LanguageContext'
+import { LanguageSwitch } from './components/LanguageSwitch'
 
 function App() {
+  const { t } = useLanguage()
   const [darkMode, setDarkMode] = useState(true)
   
   // 生成参数状态
@@ -24,7 +27,7 @@ function App() {
   // 生成图片
   const handleGenerate = async () => {
     if (!prompt.trim()) {
-      alert('请输入提示词')
+      alert(t('alert.emptyPrompt'))
       return
     }
 
@@ -51,7 +54,7 @@ function App() {
 
       if (!response.ok) {
         const error = await response.json()
-        throw new Error(error.error?.message || '生成失败')
+        throw new Error(error.error?.message || t('alert.error'))
       }
 
       // 单图直接返回 blob
@@ -67,8 +70,8 @@ function App() {
         }
       }
     } catch (error) {
-      console.error('生成错误:', error)
-      alert(error instanceof Error ? error.message : '生成失败')
+      console.error('Generation error:', error)
+      alert(error instanceof Error ? error.message : t('alert.error'))
     } finally {
       setIsGenerating(false)
     }
@@ -83,16 +86,19 @@ function App() {
             <div className="flex items-center gap-3">
               <Sparkles className="w-8 h-8 text-primary" />
               <div>
-                <h1 className="text-2xl font-bold text-foreground">Flux AI Pro 2.0</h1>
-                <p className="text-sm text-muted-foreground">基于 shadcn/ui 的现代化 AI 图像生成</p>
+                <h1 className="text-2xl font-bold text-foreground">{t('header.title')}</h1>
+                <p className="text-sm text-muted-foreground">{t('header.subtitle')}</p>
               </div>
             </div>
-            <button
-              onClick={toggleTheme}
-              className="p-2 rounded-lg border bg-background hover:bg-accent"
-            >
-              {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-            </button>
+            <div className="flex items-center gap-2">
+              <LanguageSwitch />
+              <button
+                onClick={toggleTheme}
+                className="p-2 rounded-lg border bg-background hover:bg-accent"
+              >
+                {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+              </button>
+            </div>
           </div>
         </header>
 
@@ -104,28 +110,28 @@ function App() {
               <div className="border rounded-lg p-4 bg-card">
                 <div className="flex items-center gap-2 mb-4">
                   <Settings className="w-5 h-5" />
-                  <h2 className="font-semibold">生成参数</h2>
+                  <h2 className="font-semibold">{t('params.title')}</h2>
                 </div>
 
                 {/* 模型选择 */}
                 <div className="space-y-2 mb-4">
-                  <label className="text-sm font-medium">模型</label>
+                  <label className="text-sm font-medium">{t('params.model')}</label>
                   <select
                     value={model}
                     onChange={(e) => setModel(e.target.value as any)}
                     className="w-full px-3 py-2 border rounded-md bg-background"
                   >
-                    <option value="zimage">Z-Image Turbo ⚡</option>
-                    <option value="flux">Flux 标准版</option>
-                    <option value="turbo">Flux Turbo ⚡</option>
-                    <option value="kontext">Kontext 🎨</option>
+                    <option value="zimage">{t('models.zimage')}</option>
+                    <option value="flux">{t('models.flux')}</option>
+                    <option value="turbo">{t('models.turbo')}</option>
+                    <option value="kontext">{t('models.kontext')}</option>
                   </select>
                 </div>
 
                 {/* 尺寸 */}
                 <div className="grid grid-cols-2 gap-2 mb-4">
                   <div>
-                    <label className="text-sm font-medium">宽度</label>
+                    <label className="text-sm font-medium">{t('params.width')}</label>
                     <input
                       type="number"
                       value={width}
@@ -137,7 +143,7 @@ function App() {
                     />
                   </div>
                   <div>
-                    <label className="text-sm font-medium">高度</label>
+                    <label className="text-sm font-medium">{t('params.height')}</label>
                     <input
                       type="number"
                       value={height}
@@ -152,21 +158,23 @@ function App() {
 
                 {/* 质量模式 */}
                 <div className="space-y-2 mb-4">
-                  <label className="text-sm font-medium">质量模式</label>
+                  <label className="text-sm font-medium">{t('params.quality')}</label>
                   <select
                     value={qualityMode}
                     onChange={(e) => setQualityMode(e.target.value as any)}
                     className="w-full px-3 py-2 border rounded-md bg-background"
                   >
-                    <option value="economy">经济模式</option>
-                    <option value="standard">标准模式</option>
-                    <option value="ultra">超高清模式</option>
+                    <option value="economy">{t('quality.economy')}</option>
+                    <option value="standard">{t('quality.standard')}</option>
+                    <option value="ultra">{t('quality.ultra')}</option>
                   </select>
                 </div>
 
                 {/* Seed */}
                 <div className="space-y-2 mb-4">
-                  <label className="text-sm font-medium">Seed (-1 = 随机)</label>
+                  <label className="text-sm font-medium">
+                    {t('params.seed')} {t('params.seedHint')}
+                  </label>
                   <input
                     type="number"
                     value={seed}
@@ -186,12 +194,12 @@ function App() {
                   {isGenerating ? (
                     <>
                       <span className="animate-spin">⏳</span>
-                      生成中...
+                      {t('button.generating')}
                     </>
                   ) : (
                     <>
                       <Sparkles className="w-5 h-5" />
-                      生成图片
+                      {t('button.generate')}
                     </>
                   )}
                 </button>
@@ -210,7 +218,7 @@ function App() {
                 ) : (
                   <div className="text-center text-muted-foreground">
                     <Sparkles className="w-16 h-16 mx-auto mb-4 opacity-20" />
-                    <p>生成结果将在这里显示</p>
+                    <p>{t('result.placeholder')}</p>
                   </div>
                 )}
               </div>
@@ -219,28 +227,30 @@ function App() {
             {/* 右侧：提示词 */}
             <div className="lg:col-span-1 space-y-4">
               <div className="border rounded-lg p-4 bg-card">
-                <h2 className="font-semibold mb-4">提示词</h2>
+                <h2 className="font-semibold mb-4">{t('prompt.title')}</h2>
 
                 {/* 正面提示词 */}
                 <div className="space-y-2 mb-4">
-                  <label className="text-sm font-medium">正面提示词</label>
+                  <label className="text-sm font-medium">{t('prompt.positive')}</label>
                   <textarea
                     value={prompt}
                     onChange={(e) => setPrompt(e.target.value)}
-                    placeholder="描述你想要生成的图片..."
+                    placeholder={t('prompt.positivePlaceholder')}
                     className="w-full px-3 py-2 border rounded-md bg-background resize-none"
                     rows={6}
                   />
-                  <p className="text-xs text-muted-foreground">{prompt.length}/1000</p>
+                  <p className="text-xs text-muted-foreground">
+                    {prompt.length}/1000 {t('prompt.charCount')}
+                  </p>
                 </div>
 
                 {/* 负面提示词 */}
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">负面提示词</label>
+                  <label className="text-sm font-medium">{t('prompt.negative')}</label>
                   <textarea
                     value={negativePrompt}
                     onChange={(e) => setNegativePrompt(e.target.value)}
-                    placeholder="blurry, low quality, distorted..."
+                    placeholder={t('prompt.negativePlaceholder')}
                     className="w-full px-3 py-2 border rounded-md bg-background resize-none"
                     rows={3}
                   />
@@ -253,8 +263,8 @@ function App() {
         {/* 底部 */}
         <footer className="border-t mt-8 py-6 bg-card">
           <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
-            <p>Flux AI Pro 2.0 - Powered by Cloudflare Workers + React + shadcn/ui</p>
-            <p className="mt-2">© 2025 Flux AI Pro. All rights reserved.</p>
+            <p>{t('footer.poweredBy')}</p>
+            <p className="mt-2">{t('footer.copyright')}</p>
           </div>
         </footer>
       </div>
