@@ -26,7 +26,6 @@ export function ImageViewer({ image, onClose, historyItems, currentIndex, onNavi
   const [isDragging, setIsDragging] = useState(false)
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
   const [showInfo, setShowInfo] = useState(false)
-  const [isFullscreen, setIsFullscreen] = useState(false)
   const imageRef = useRef<HTMLDivElement>(null)
 
   // 键盘快捷键
@@ -65,7 +64,7 @@ export function ImageViewer({ image, onClose, historyItems, currentIndex, onNavi
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [scale, currentIndex, historyItems, showInfo])
+  }, [scale, currentIndex, historyItems, showInfo, onClose, onNavigate])
 
   // 滚轮缩放
   const handleWheel = (e: React.WheelEvent) => {
@@ -137,10 +136,8 @@ export function ImageViewer({ image, onClose, historyItems, currentIndex, onNavi
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
       imageRef.current?.requestFullscreen()
-      setIsFullscreen(true)
     } else {
       document.exitFullscreen()
-      setIsFullscreen(false)
     }
   }
 

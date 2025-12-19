@@ -11,7 +11,6 @@ interface EnhancedStyleSelectorProps {
 export function EnhancedStyleSelector({ value, onChange }: EnhancedStyleSelectorProps) {
   const { language } = useLanguage()
   const [searchQuery, setSearchQuery] = useState('')
-  const [selectedCategory, setSelectedCategory] = useState<string>('all')
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set(['all']))
   const [favorites, setFavorites] = useState<Set<string>>(() => {
     const stored = localStorage.getItem('flux-ai-favorite-styles')
@@ -21,22 +20,6 @@ export function EnhancedStyleSelector({ value, onChange }: EnhancedStyleSelector
     const stored = localStorage.getItem('flux-ai-recent-styles')
     return stored ? JSON.parse(stored) : []
   })
-
-  // 筛选风格
-  const filteredStyles = useMemo(() => {
-    let styles = selectedCategory === 'all' 
-      ? getAllStyles() 
-      : styleCategories.find(c => c.id === selectedCategory)?.styles || []
-
-    if (searchQuery) {
-      styles = styles.filter(style => 
-        style.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        style.nameEn.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    }
-
-    return styles
-  }, [selectedCategory, searchQuery])
 
   const popularStyles = getPopularStyles()
   const selectedStyle = value ? getAllStyles().find(s => s.id === value) : undefined
