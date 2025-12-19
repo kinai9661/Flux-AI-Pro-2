@@ -281,7 +281,7 @@ export function HistoryPanel({ onLoadParams }: HistoryPanelProps) {
             style: history[selectedImage.index].style,
           }}
         />
-      >
+      )}
     </div>
   )
 }
