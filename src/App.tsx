@@ -8,7 +8,7 @@ import { HistoryPanel } from './components/HistoryPanel'
 import { PresetManager } from './components/PresetManager'
 import { ImageViewer } from './components/ImageViewer'
 import { delay } from './utils/retry'
-import { saveImageToDB, getImageFromDB } from './utils/imageStorage'
+import { saveImageToDB } from './utils/imageStorage'
 import type { GenerateRequest, HistoryItem, Style } from './types'
 
 function App() {
@@ -44,7 +44,7 @@ function App() {
 
   // 计时器
   useEffect(() => {
-    let interval: NodeJS.Timeout | null = null
+    let interval: ReturnType<typeof setInterval> | null = null
     if (isGenerating) {
       interval = setInterval(() => {
         setElapsedTime(prev => prev + 0.1)
