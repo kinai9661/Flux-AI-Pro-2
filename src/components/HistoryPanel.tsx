@@ -14,21 +14,30 @@ export function HistoryPanel({ onLoadParams }: HistoryPanelProps) {
   const [history, setHistory] = useState<HistoryItem[]>([])
   const [selectedImage, setSelectedImage] = useState<{ image: string; index: number } | null>(null)
   const [storageInfo, setStorageInfo] = useState<{ used: number; quota: number }>({ used: 0, quota: 0 })
+  const [loadingImages, setLoadingImages] = useState(true)
 
   useEffect(() => {
     const loadHistory = async () => {
+      setLoadingImages(true)
       const stored = localStorage.getItem('flux-ai-history')
       if (stored) {
         const historyData = JSON.parse(stored) as HistoryItem[]
         
-        // 从 IndexedDB 加载图片
+        // 總是從 IndexedDB 加載圖片（避免 blob URL 失效）
         const historyWithImages = await Promise.all(
           historyData.map(async (item) => {
-            if (!item.result_image || !item.result_image.startsWith('blob:')) {
+            try {
+              // 嘗試從 IndexedDB 加載
               const imageUrl = await getImageFromDB(item.id)
               if (imageUrl) {
+                // 釋放舊的 blob URL
+                if (item.result_image && item.result_image.startsWith('blob:')) {
+                  URL.revokeObjectURL(item.result_image)
+                }
                 return { ...item, result_image: imageUrl }
               }
+            } catch (error) {
+              console.error(`Failed to load image for ${item.id}:`, error)
             }
             return item
           })
@@ -37,27 +46,45 @@ export function HistoryPanel({ onLoadParams }: HistoryPanelProps) {
         setHistory(historyWithImages)
       }
       
-      // 获取存储信息
+      // 獲取儲存信息
       const info = await getStorageInfo()
       setStorageInfo(info)
+      setLoadingImages(false)
     }
     
     loadHistory()
+    
+    // 監聽 storage 事件
     window.addEventListener('storage', loadHistory)
-    return () => window.removeEventListener('storage', loadHistory)
+    return () => {
+      window.removeEventListener('storage', loadHistory)
+      // 清理所有 blob URLs
+      history.forEach(item => {
+        if (item.result_image && item.result_image.startsWith('blob:')) {
+          URL.revokeObjectURL(item.result_image)
+        }
+      })
+    }
   }, [])
 
   const handleDelete = async (id: string) => {
     try {
-      // 从 IndexedDB 删除
+      const itemToDelete = history.find(item => item.id === id)
+      
+      // 釋放 blob URL
+      if (itemToDelete?.result_image && itemToDelete.result_image.startsWith('blob:')) {
+        URL.revokeObjectURL(itemToDelete.result_image)
+      }
+      
+      // 從 IndexedDB 刪除
       await deleteImageFromDB(id)
       
-      // 从 localStorage 删除
+      // 從 localStorage 刪除
       const newHistory = history.filter(item => item.id !== id)
       setHistory(newHistory)
       localStorage.setItem('flux-ai-history', JSON.stringify(newHistory))
       
-      // 更新存储信息
+      // 更新儲存信息
       const info = await getStorageInfo()
       setStorageInfo(info)
     } catch (error) {
@@ -68,7 +95,14 @@ export function HistoryPanel({ onLoadParams }: HistoryPanelProps) {
   const handleClearAll = async () => {
     if (confirm(language === 'zh-TW' ? '確定要清空所有歷史記錄嗎？' : 'Clear all history?')) {
       try {
-        // 删除所有图片
+        // 釋放所有 blob URLs
+        history.forEach(item => {
+          if (item.result_image && item.result_image.startsWith('blob:')) {
+            URL.revokeObjectURL(item.result_image)
+          }
+        })
+        
+        // 刪除所有圖片
         for (const item of history) {
           await deleteImageFromDB(item.id)
         }
@@ -76,7 +110,7 @@ export function HistoryPanel({ onLoadParams }: HistoryPanelProps) {
         setHistory([])
         localStorage.removeItem('flux-ai-history')
         
-        // 更新存储信息
+        // 更新儲存信息
         const info = await getStorageInfo()
         setStorageInfo(info)
       } catch (error) {
@@ -103,6 +137,19 @@ export function HistoryPanel({ onLoadParams }: HistoryPanelProps) {
     if (history[index]?.result_image) {
       setSelectedImage({ image: history[index].result_image!, index })
     }
+  }
+
+  if (loadingImages) {
+    return (
+      <div className="flex items-center justify-center h-full text-muted-foreground">
+        <div className="text-center">
+          <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-2"></div>
+          <p className="text-sm">
+            {language === 'zh-TW' ? '加載中...' : 'Loading...'}
+          </p>
+        </div>
+      </div>
+    )
   }
 
   if (history.length === 0) {
@@ -151,7 +198,7 @@ export function HistoryPanel({ onLoadParams }: HistoryPanelProps) {
             key={item.id}
             className="border rounded-lg p-3 bg-card hover:border-primary/50 transition-colors"
           >
-            {item.result_image && (
+            {item.result_image ? (
               <div 
                 className="aspect-square bg-muted rounded-lg mb-3 overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
                 onClick={() => setSelectedImage({ image: item.result_image!, index })}
@@ -160,7 +207,15 @@ export function HistoryPanel({ onLoadParams }: HistoryPanelProps) {
                   src={item.result_image}
                   alt="Generated"
                   className="w-full h-full object-cover"
+                  onError={(e) => {
+                    console.error('Image failed to load:', item.id)
+                    e.currentTarget.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100"%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" fill="%23999"%3E失敗%3C/text%3E%3C/svg%3E'
+                  }}
                 />
+              </div>
+            ) : (
+              <div className="aspect-square bg-muted rounded-lg mb-3 flex items-center justify-center text-muted-foreground text-xs">
+                {language === 'zh-TW' ? '無圖片' : 'No image'}
               </div>
             )}
 
@@ -226,7 +281,7 @@ export function HistoryPanel({ onLoadParams }: HistoryPanelProps) {
             style: history[selectedImage.index].style,
           }}
         />
-      )}
+      >
     </div>
   )
 }
