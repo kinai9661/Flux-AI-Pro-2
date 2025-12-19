@@ -80,7 +80,8 @@ function App() {
     setGeneratedImage(null)
     setRetryInfo(null)
     const startTime = Date.now()
-    const maxRetries = 3
+    const maxRetries = 2 // 最多2次重试
+    const retryDelay = 15000 // 15秒间隔
 
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
@@ -118,9 +119,8 @@ function App() {
         // 处理 429 错误
         if (response.status === 429) {
           if (attempt < maxRetries) {
-            const waitTime = Math.pow(2, attempt + 1) * 1000 // 2s, 4s, 8s
-            setRetryInfo({ attempt: attempt + 1, maxAttempts: maxRetries, waitTime })
-            await delay(waitTime)
+            setRetryInfo({ attempt: attempt + 1, maxAttempts: maxRetries, waitTime: retryDelay })
+            await delay(retryDelay)
             continue
           } else {
             throw new Error(
