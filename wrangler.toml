@@ -12,7 +12,7 @@ binding = "AI"
 # 環境變量
 [vars]
 WORKER_VERSION = "10.0.0-ui-upgrade"
-DEFAULT_MODEL = "flux"
+DEFAULT_MODEL = "Z-Image-Turbo"
 MAX_WIDTH = 2048
 MAX_HEIGHT = 2048
 MAX_TIMEOUT = 120000
