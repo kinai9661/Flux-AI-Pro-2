@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Sparkles, Settings, Moon, Sun, Image as ImageIcon, History, ChevronDown, ChevronUp } from 'lucide-react'
+import { Sparkles, Settings, Moon, Sun, Image as ImageIcon, History, ChevronDown, ChevronUp, AlertCircle } from 'lucide-react'
 import { useLanguage } from './contexts/LanguageContext'
 import { LanguageSwitch } from './components/LanguageSwitch'
 import { EnhancedStyleSelector } from './components/EnhancedStyleSelector'
@@ -7,6 +7,7 @@ import { AspectRatioSelector } from './components/AspectRatioSelector'
 import { HistoryPanel } from './components/HistoryPanel'
 import { PresetManager } from './components/PresetManager'
 import { ImageViewer } from './components/ImageViewer'
+import { delay } from './utils/retry'
 import type { GenerateRequest, HistoryItem, Style } from './types'
 
 function App() {
@@ -27,6 +28,7 @@ function App() {
   const [qualityMode, setQualityMode] = useState<'economy' | 'standard' | 'ultra'>('standard')
   const [isGenerating, setIsGenerating] = useState(false)
   const [generatedImage, setGeneratedImage] = useState<string | null>(null)
+  const [retryInfo, setRetryInfo] = useState<{ attempt: number; maxAttempts: number; waitTime: number } | null>(null)
   
   // UI 状态
   const [showAdvanced, setShowAdvanced] = useState(false)
@@ -67,7 +69,7 @@ function App() {
     if (params.seed !== undefined) setSeed(params.seed)
   }
 
-  // 生成图片
+  // 生成图片（带重试）
   const handleGenerate = async () => {
     if (!prompt.trim()) {
       alert(t('alert.emptyPrompt'))
@@ -76,90 +78,120 @@ function App() {
 
     setIsGenerating(true)
     setGeneratedImage(null)
+    setRetryInfo(null)
     const startTime = Date.now()
+    const maxRetries = 3
 
-    try {
-      // 构建请求
-      let finalPrompt = prompt
-      let finalNegativePrompt = negativePrompt
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        // 构建请求
+        let finalPrompt = prompt
+        let finalNegativePrompt = negativePrompt
 
-      // 如果选了风格，添加风格提示词
-      if (currentStyle) {
-        finalPrompt = `${prompt}, ${currentStyle.prompt}`
-        if (currentStyle.negativePrompt) {
-          finalNegativePrompt = finalNegativePrompt 
-            ? `${finalNegativePrompt}, ${currentStyle.negativePrompt}`
-            : currentStyle.negativePrompt
+        // 如果选了风格，添加风格提示词
+        if (currentStyle) {
+          finalPrompt = `${prompt}, ${currentStyle.prompt}`
+          if (currentStyle.negativePrompt) {
+            finalNegativePrompt = finalNegativePrompt 
+              ? `${finalNegativePrompt}, ${currentStyle.negativePrompt}`
+              : currentStyle.negativePrompt
+          }
         }
-      }
 
-      const response = await fetch('/_internal/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          prompt: finalPrompt,
-          negative_prompt: finalNegativePrompt,
+        const response = await fetch('/_internal/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            prompt: finalPrompt,
+            negative_prompt: finalNegativePrompt,
+            model,
+            width,
+            height,
+            seed: seed === -1 ? -1 : seed,
+            quality_mode: qualityMode,
+            n: 1,
+            auto_optimize: true,
+            auto_hd: true,
+          }),
+        })
+
+        // 处理 429 错误
+        if (response.status === 429) {
+          if (attempt < maxRetries) {
+            const waitTime = Math.pow(2, attempt + 1) * 1000 // 2s, 4s, 8s
+            setRetryInfo({ attempt: attempt + 1, maxAttempts: maxRetries, waitTime })
+            await delay(waitTime)
+            continue
+          } else {
+            throw new Error(
+              language === 'zh-TW'
+                ? 'API 請求頻率過高，請稍後再試（建議等待 1-2 分鐘）'
+                : 'API rate limit exceeded, please try again later (wait 1-2 minutes)'
+            )
+          }
+        }
+
+        if (!response.ok) {
+          const error = await response.json()
+          throw new Error(error.error?.message || t('alert.error'))
+        }
+
+        // 单图直接返回 blob
+        const contentType = response.headers.get('content-type')
+        let imageUrl: string
+        
+        if (contentType?.startsWith('image/')) {
+          const blob = await response.blob()
+          imageUrl = URL.createObjectURL(blob)
+        } else {
+          const data = await response.json()
+          if (data.data?.[0]?.image) {
+            imageUrl = data.data[0].image
+          } else {
+            throw new Error('No image in response')
+          }
+        }
+
+        setGeneratedImage(imageUrl)
+        setRetryInfo(null)
+
+        // 保存到历史
+        const historyItem: HistoryItem = {
+          id: Date.now().toString(),
+          timestamp: Date.now(),
+          prompt,
+          negative_prompt: negativePrompt,
           model,
           width,
           height,
-          seed: seed === -1 ? -1 : seed,
+          seed,
+          style: selectedStyle,
           quality_mode: qualityMode,
-          n: 1,
-          auto_optimize: true,
-          auto_hd: true,
-        }),
-      })
+          result_image: imageUrl,
+          generation_time: Date.now() - startTime,
+        }
 
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error?.message || t('alert.error'))
-      }
+        const history = JSON.parse(localStorage.getItem('flux-ai-history') || '[]')
+        history.unshift(historyItem)
+        if (history.length > 100) history.pop()
+        localStorage.setItem('flux-ai-history', JSON.stringify(history))
 
-      // 单图直接返回 blob
-      const contentType = response.headers.get('content-type')
-      let imageUrl: string
-      
-      if (contentType?.startsWith('image/')) {
-        const blob = await response.blob()
-        imageUrl = URL.createObjectURL(blob)
-      } else {
-        const data = await response.json()
-        if (data.data?.[0]?.image) {
-          imageUrl = data.data[0].image
-        } else {
-          throw new Error('No image in response')
+        break // 成功，退出循环
+
+      } catch (error) {
+        console.error('Generation error:', error)
+        if (attempt === maxRetries) {
+          setRetryInfo(null)
+          alert(
+            language === 'zh-TW'
+              ? `生成失敗：${error instanceof Error ? error.message : t('alert.error')}`
+              : `Generation failed: ${error instanceof Error ? error.message : t('alert.error')}`
+          )
         }
       }
-
-      setGeneratedImage(imageUrl)
-
-      // 保存到历史
-      const historyItem: HistoryItem = {
-        id: Date.now().toString(),
-        timestamp: Date.now(),
-        prompt,
-        negative_prompt: negativePrompt,
-        model,
-        width,
-        height,
-        seed,
-        style: selectedStyle,
-        quality_mode: qualityMode,
-        result_image: imageUrl,
-        generation_time: Date.now() - startTime,
-      }
-
-      const history = JSON.parse(localStorage.getItem('flux-ai-history') || '[]')
-      history.unshift(historyItem)
-      if (history.length > 100) history.pop() // 保持最多 100 条
-      localStorage.setItem('flux-ai-history', JSON.stringify(history))
-
-    } catch (error) {
-      console.error('Generation error:', error)
-      alert(error instanceof Error ? error.message : t('alert.error'))
-    } finally {
-      setIsGenerating(false)
     }
+
+    setIsGenerating(false)
   }
 
   return (
@@ -307,7 +339,10 @@ function App() {
                     {isGenerating ? (
                       <>
                         <span className="animate-spin">⏳</span>
-                        {t('button.generating')}
+                        {retryInfo 
+                          ? (language === 'zh-TW' ? `重試中 (${retryInfo.attempt}/${retryInfo.maxAttempts})` : `Retrying (${retryInfo.attempt}/${retryInfo.maxAttempts})`)
+                          : t('button.generating')
+                        }
                       </>
                     ) : (
                       <>
@@ -316,6 +351,24 @@ function App() {
                       </>
                     )}
                   </button>
+                  
+                  {/* 重试提示 */}
+                  {retryInfo && isGenerating && (
+                    <div className="mt-3 p-2 bg-amber-500/10 border border-amber-500/20 rounded-md flex items-start gap-2">
+                      <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                      <div className="text-xs text-amber-600 dark:text-amber-400">
+                        <p className="font-medium">
+                          {language === 'zh-TW' ? 'API 請求頻率過高' : 'API Rate Limit'}
+                        </p>
+                        <p className="mt-1">
+                          {language === 'zh-TW' 
+                            ? `${retryInfo.waitTime / 1000} 秒後重試...`
+                            : `Retrying in ${retryInfo.waitTime / 1000}s...`
+                          }
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
