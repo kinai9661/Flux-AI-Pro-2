@@ -102,20 +102,27 @@ function App() {
       setQualityMode(item.quality_mode)
     }
     
-    // 设置比例
+    // 设置比例（支持 ZIMAGE 2K/4K 比例）
     const ratio = `${item.width}x${item.height}`
     const ratioMap: Record<string, string> = {
+      // 标准比例
       '1024x1024': 'square',
-      '2048x2048': 'square-2k',
-      '4096x4096': 'square-4k',
       '1024x1536': 'portrait',
-      '1536x2048': 'portrait-2k',
-      '3072x4096': 'portrait-4k',
       '1536x1024': 'landscape',
-      '2048x1536': 'landscape-2k',
-      '4096x3072': 'landscape-4k',
       '768x1344': 'portrait-tall',
       '1344x768': 'landscape-wide',
+      // ZIMAGE 1K 比例
+      '1024x1024': 'square-1k',
+      '1024x1536': 'portrait-1k',
+      '1536x1024': 'landscape-1k',
+      // ZIMAGE 2K 比例
+      '2048x2048': 'square-2k',
+      '1536x2048': 'portrait-2k',
+      '2048x1536': 'landscape-2k',
+      // ZIMAGE 4K 比例
+      '4096x4096': 'square-4k',
+      '3072x4096': 'portrait-4k',
+      '4096x3072': 'landscape-4k',
     }
     setSelectedRatio(ratioMap[ratio] || 'square')
     
@@ -123,7 +130,7 @@ function App() {
     setActiveTab('generate')
     
     // 提示用户
-    alert(language === 'zh-TW' ? '参数已载入，可以直接生成' : 'Parameters loaded, ready to generate')
+    alert(language === 'zh-TW' ? '參數已載入，可以直接生成' : 'Parameters loaded, ready to generate')
   }
 
   // 生成图片（带重试）
@@ -180,7 +187,7 @@ function App() {
           } else {
             throw new Error(
               language === 'zh-TW'
-                ? 'API 请求频率过高，请稍后再试（建议等待 1-2 分钟）'
+                ? 'API 請求頻率過高，請稍後再試（建議等待 1-2 分鐘）'
                 : 'API rate limit exceeded, please try again later (wait 1-2 minutes)'
             )
           }
@@ -251,7 +258,7 @@ function App() {
           setRetryInfo(null)
           alert(
             language === 'zh-TW'
-              ? `生成失败：${error instanceof Error ? error.message : t('alert.error')}`
+              ? `生成失敗：${error instanceof Error ? error.message : t('alert.error')}`
               : `Generation failed: ${error instanceof Error ? error.message : t('alert.error')}`
           )
         }
@@ -279,7 +286,7 @@ function App() {
                 <button
                   onClick={toggleTheme}
                   className="p-2 rounded-lg border bg-background hover:bg-accent transition-colors"
-                  title={darkMode ? (language === 'zh-TW' ? '浅色模式' : 'Light Mode') : (language === 'zh-TW' ? '深色模式' : 'Dark Mode')}
+                  title={darkMode ? (language === 'zh-TW' ? '淺色模式' : 'Light Mode') : (language === 'zh-TW' ? '深色模式' : 'Dark Mode')}
                 >
                   {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
                 </button>
@@ -296,7 +303,7 @@ function App() {
                 }`}
               >
                 <ImageIcon className="w-4 h-4" />
-                {language === 'zh-TW' ? '生成图片' : 'Generate'}
+                {language === 'zh-TW' ? '生成圖片' : 'Generate'}
               </button>
               <button
                 onClick={() => setActiveTab('history')}
@@ -307,7 +314,7 @@ function App() {
                 }`}
               >
                 <History className="w-4 h-4" />
-                {language === 'zh-TW' ? '历史记录' : 'History'}
+                {language === 'zh-TW' ? '歷史記錄' : 'History'}
               </button>
             </div>
           </div>
@@ -385,14 +392,14 @@ function App() {
                     <div className="flex items-center justify-center gap-2 mt-2 text-xs text-primary/60">
                       <Clock className="w-3 h-3" />
                       <span>
-                        {language === 'zh-TW' ? '生成耗时' : 'Time'}: {(generationTime / 1000).toFixed(1)}s
+                        {language === 'zh-TW' ? '生成耗時' : 'Time'}: {(generationTime / 1000).toFixed(1)}s
                       </span>
                     </div>
                   )}
                   
                   {generatedImage && !isGenerating && (
                     <p className="text-xs text-center text-primary/60 mt-1">
-                      {language === 'zh-TW' ? '点击放大查看 • 已永久保存' : 'Click to enlarge • Saved permanently'}
+                      {language === 'zh-TW' ? '點擊放大查看 • 已永久保存' : 'Click to enlarge • Saved permanently'}
                     </p>
                   )}
                   
@@ -405,7 +412,7 @@ function App() {
                       <>
                         <span className="animate-spin">⏳</span>
                         {retryInfo 
-                          ? (language === 'zh-TW' ? `重试中 (${retryInfo.attempt}/${retryInfo.maxAttempts})` : `Retrying (${retryInfo.attempt}/${retryInfo.maxAttempts})`)
+                          ? (language === 'zh-TW' ? `重試中 (${retryInfo.attempt}/${retryInfo.maxAttempts})` : `Retrying (${retryInfo.attempt}/${retryInfo.maxAttempts})`)
                           : `${language === 'zh-TW' ? '生成中' : 'Generating'}... ${elapsedTime.toFixed(1)}s`
                         }
                       </>
@@ -422,11 +429,11 @@ function App() {
                       <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
                       <div className="text-xs text-amber-600 dark:text-amber-400">
                         <p className="font-medium">
-                          {language === 'zh-TW' ? 'API 请求频率过高' : 'API Rate Limit'}
+                          {language === 'zh-TW' ? 'API 請求頻率過高' : 'API Rate Limit'}
                         </p>
                         <p className="mt-1">
                           {language === 'zh-TW' 
-                            ? `${retryInfo.waitTime / 1000} 秒后重试...`
+                            ? `${retryInfo.waitTime / 1000} 秒後重試...`
                             : `Retrying in ${retryInfo.waitTime / 1000}s...`
                           }
                         </p>
@@ -487,7 +494,7 @@ function App() {
                       className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground w-full"
                     >
                       {showAdvanced ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                      {language === 'zh-TW' ? '进阶参数' : 'Advanced'}
+                      {language === 'zh-TW' ? '進階參數' : 'Advanced'}
                     </button>
                     {showAdvanced && (
                       <div className="mt-3 space-y-3">
@@ -506,7 +513,7 @@ function App() {
                         </div>
                         <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
                           <div>
-                            <span className="font-medium">{language === 'zh-TW' ? '宽度' : 'Width'}:</span> {width}px
+                            <span className="font-medium">{language === 'zh-TW' ? '寬度' : 'Width'}:</span> {width}px
                           </div>
                           <div>
                             <span className="font-medium">{language === 'zh-TW' ? '高度' : 'Height'}:</span> {height}px
