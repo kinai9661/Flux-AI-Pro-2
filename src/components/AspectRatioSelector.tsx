@@ -3,7 +3,7 @@ import { useLanguage } from '../contexts/LanguageContext'
 interface AspectRatioSelectorProps {
   value: string
   onChange: (ratioId: string, width: number, height: number) => void
-  model: 'zimage' | 'flux' | 'turbo' | 'kontext'
+  model?: 'zimage' | 'flux' | 'turbo' | 'kontext'
 }
 
 interface Ratio {
@@ -37,7 +37,7 @@ const standardRatios: Ratio[] = [
   { id: 'landscape-wide', label: '横屏 16:9', labelEn: 'Landscape 16:9', width: 1344, height: 768 },
 ]
 
-export function AspectRatioSelector({ value, onChange, model }: AspectRatioSelectorProps) {
+export function AspectRatioSelector({ value, onChange, model = 'flux' }: AspectRatioSelectorProps) {
   const { language } = useLanguage()
   
   // 根据模型选择比例列表
@@ -82,7 +82,7 @@ export function AspectRatioSelector({ value, onChange, model }: AspectRatioSelec
       {model === 'zimage' && (
         <p className="text-xs text-muted-foreground">
           {language === 'zh-TW' 
-            ? '💡 2K/4K 选项提供超高清画质'
+            ? '💡 2K/4K 選項提供超高清畫質'
             : '💡 2K/4K options provide ultra-high quality'
           }
         </p>
