@@ -1,11 +1,18 @@
-import { useState } from 'react'
-import { Sparkles, Settings, Moon, Sun } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Sparkles, Settings, Moon, Sun, Image as ImageIcon, History, ChevronDown, ChevronUp } from 'lucide-react'
 import { useLanguage } from './contexts/LanguageContext'
 import { LanguageSwitch } from './components/LanguageSwitch'
+import { StyleSelector } from './components/StyleSelector'
+import { AspectRatioSelector } from './components/AspectRatioSelector'
+import { HistoryPanel } from './components/HistoryPanel'
+import { PresetManager } from './components/PresetManager'
+import type { GenerateRequest, HistoryItem, Style } from './types'
+import type { Preset } from './utils/presets'
 
 function App() {
-  const { t } = useLanguage()
+  const { t, language } = useLanguage()
   const [darkMode, setDarkMode] = useState(true)
+  const [activeTab, setActiveTab] = useState<'generate' | 'history'>('generate')
   
   // 生成参数状态
   const [prompt, setPrompt] = useState('')
@@ -13,15 +20,50 @@ function App() {
   const [model, setModel] = useState<'zimage' | 'flux' | 'turbo' | 'kontext'>('flux')
   const [width, setWidth] = useState(1024)
   const [height, setHeight] = useState(1024)
+  const [selectedRatio, setSelectedRatio] = useState('square')
   const [seed, setSeed] = useState(-1)
+  const [selectedStyle, setSelectedStyle] = useState<string | undefined>(undefined)
+  const [currentStyle, setCurrentStyle] = useState<Style | undefined>(undefined)
   const [qualityMode, setQualityMode] = useState<'economy' | 'standard' | 'ultra'>('standard')
   const [isGenerating, setIsGenerating] = useState(false)
   const [generatedImage, setGeneratedImage] = useState<string | null>(null)
+  
+  // UI 状态
+  const [showAdvanced, setShowAdvanced] = useState(false)
+
+  // 初始化时应用暗黑模式
+  useEffect(() => {
+    document.documentElement.classList.add('dark')
+  }, [])
 
   // 切换主题
   const toggleTheme = () => {
     setDarkMode(!darkMode)
     document.documentElement.classList.toggle('dark')
+  }
+
+  // 处理风格选择
+  const handleStyleChange = (styleId: string | undefined, style?: Style) => {
+    setSelectedStyle(styleId)
+    setCurrentStyle(style)
+  }
+
+  // 处理比例选择
+  const handleRatioChange = (ratioId: string, w: number, h: number) => {
+    setSelectedRatio(ratioId)
+    setWidth(w)
+    setHeight(h)
+  }
+
+  // 应用预设
+  const handleApplyPreset = (params: Partial<GenerateRequest>) => {
+    if (params.model) setModel(params.model)
+    if (params.width) setWidth(params.width)
+    if (params.height) setHeight(params.height)
+    if (params.quality_mode) setQualityMode(params.quality_mode)
+    if (params.style) setSelectedStyle(params.style)
+    if (params.negative_prompt) setNegativePrompt(params.negative_prompt)
+    if (params.seed !== undefined) setSeed(params.seed)
   }
 
   // 生成图片
@@ -33,14 +75,29 @@ function App() {
 
     setIsGenerating(true)
     setGeneratedImage(null)
+    const startTime = Date.now()
 
     try {
+      // 构建请求
+      let finalPrompt = prompt
+      let finalNegativePrompt = negativePrompt
+
+      // 如果选了风格，添加风格提示词
+      if (currentStyle) {
+        finalPrompt = `${prompt}, ${currentStyle.prompt}`
+        if (currentStyle.negativePrompt) {
+          finalNegativePrompt = finalNegativePrompt 
+            ? `${finalNegativePrompt}, ${currentStyle.negativePrompt}`
+            : currentStyle.negativePrompt
+        }
+      }
+
       const response = await fetch('/_internal/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          prompt,
-          negative_prompt: negativePrompt,
+          prompt: finalPrompt,
+          negative_prompt: finalNegativePrompt,
           model,
           width,
           height,
@@ -59,16 +116,43 @@ function App() {
 
       // 单图直接返回 blob
       const contentType = response.headers.get('content-type')
+      let imageUrl: string
+      
       if (contentType?.startsWith('image/')) {
         const blob = await response.blob()
-        const imageUrl = URL.createObjectURL(blob)
-        setGeneratedImage(imageUrl)
+        imageUrl = URL.createObjectURL(blob)
       } else {
         const data = await response.json()
         if (data.data?.[0]?.image) {
-          setGeneratedImage(data.data[0].image)
+          imageUrl = data.data[0].image
+        } else {
+          throw new Error('No image in response')
         }
       }
+
+      setGeneratedImage(imageUrl)
+
+      // 保存到历史
+      const historyItem: HistoryItem = {
+        id: Date.now().toString(),
+        timestamp: Date.now(),
+        prompt,
+        negative_prompt: negativePrompt,
+        model,
+        width,
+        height,
+        seed,
+        style: selectedStyle,
+        quality_mode: qualityMode,
+        result_image: imageUrl,
+        generation_time: Date.now() - startTime,
+      }
+
+      const history = JSON.parse(localStorage.getItem('flux-ai-history') || '[]')
+      history.unshift(historyItem)
+      if (history.length > 100) history.pop() // 保持最多 100 条
+      localStorage.setItem('flux-ai-history', JSON.stringify(history))
+
     } catch (error) {
       console.error('Generation error:', error)
       alert(error instanceof Error ? error.message : t('alert.error'))
@@ -81,22 +165,51 @@ function App() {
     <div className={darkMode ? 'dark' : ''}>
       <div className="min-h-screen bg-background">
         {/* 头部 */}
-        <header className="border-b bg-card">
-          <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Sparkles className="w-8 h-8 text-primary" />
-              <div>
-                <h1 className="text-2xl font-bold text-foreground">{t('header.title')}</h1>
-                <p className="text-sm text-muted-foreground">{t('header.subtitle')}</p>
+        <header className="border-b bg-card sticky top-0 z-40">
+          <div className="container mx-auto px-4 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Sparkles className="w-8 h-8 text-primary" />
+                <div>
+                  <h1 className="text-2xl font-bold text-foreground">{t('header.title')}</h1>
+                  <p className="text-sm text-muted-foreground">{t('header.subtitle')}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <LanguageSwitch />
+                <button
+                  onClick={toggleTheme}
+                  className="p-2 rounded-lg border bg-background hover:bg-accent transition-colors"
+                  title={darkMode ? (language === 'zh-TW' ? '淺色模式' : 'Light Mode') : (language === 'zh-TW' ? '深色模式' : 'Dark Mode')}
+                >
+                  {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+                </button>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <LanguageSwitch />
+
+            {/* Tabs 切换 */}
+            <div className="flex gap-4 mt-4">
               <button
-                onClick={toggleTheme}
-                className="p-2 rounded-lg border bg-background hover:bg-accent"
+                onClick={() => setActiveTab('generate')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                  activeTab === 'generate'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'hover:bg-accent'
+                }`}
               >
-                {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+                <ImageIcon className="w-4 h-4" />
+                {language === 'zh-TW' ? '生成圖片' : 'Generate'}
+              </button>
+              <button
+                onClick={() => setActiveTab('history')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                  activeTab === 'history'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'hover:bg-accent'
+                }`}
+              >
+                <History className="w-4 h-4" />
+                {language === 'zh-TW' ? '歷史記錄' : 'History'}
               </button>
             </div>
           </div>
@@ -104,160 +217,192 @@ function App() {
 
         {/* 主内容 */}
         <main className="container mx-auto px-4 py-6">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* 左侧：参数面板 */}
-            <div className="lg:col-span-1 space-y-4">
-              <div className="border rounded-lg p-4 bg-card">
-                <div className="flex items-center gap-2 mb-4">
-                  <Settings className="w-5 h-5" />
-                  <h2 className="font-semibold">{t('params.title')}</h2>
+          {activeTab === 'generate' ? (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* 左侧：参数面板 */}
+              <div className="lg:col-span-1 space-y-4">
+                {/* 预设管理 */}
+                <div className="border rounded-lg p-4 bg-card">
+                  <PresetManager
+                    currentParams={{
+                      prompt,
+                      negative_prompt: negativePrompt,
+                      model,
+                      width,
+                      height,
+                      quality_mode: qualityMode,
+                      style: selectedStyle,
+                      seed,
+                    }}
+                    onApplyPreset={handleApplyPreset}
+                  />
                 </div>
 
-                {/* 模型选择 */}
-                <div className="space-y-2 mb-4">
-                  <label className="text-sm font-medium">{t('params.model')}</label>
-                  <select
-                    value={model}
-                    onChange={(e) => setModel(e.target.value as any)}
-                    className="w-full px-3 py-2 border rounded-md bg-background"
-                  >
-                    <option value="zimage">{t('models.zimage')}</option>
-                    <option value="flux">{t('models.flux')}</option>
-                    <option value="turbo">{t('models.turbo')}</option>
-                    <option value="kontext">{t('models.kontext')}</option>
-                  </select>
-                </div>
+                {/* 基础参数 */}
+                <div className="border rounded-lg p-4 bg-card">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Settings className="w-5 h-5" />
+                    <h2 className="font-semibold">{t('params.title')}</h2>
+                  </div>
 
-                {/* 尺寸 */}
-                <div className="grid grid-cols-2 gap-2 mb-4">
-                  <div>
-                    <label className="text-sm font-medium">{t('params.width')}</label>
-                    <input
-                      type="number"
-                      value={width}
-                      onChange={(e) => setWidth(Number(e.target.value))}
+                  {/* 模型选择 */}
+                  <div className="space-y-2 mb-4">
+                    <label className="text-sm font-medium">{t('params.model')}</label>
+                    <select
+                      value={model}
+                      onChange={(e) => setModel(e.target.value as any)}
                       className="w-full px-3 py-2 border rounded-md bg-background"
-                      min={256}
-                      max={2048}
-                      step={64}
+                    >
+                      <option value="zimage">{t('models.zimage')}</option>
+                      <option value="flux">{t('models.flux')}</option>
+                      <option value="turbo">{t('models.turbo')}</option>
+                      <option value="kontext">{t('models.kontext')}</option>
+                    </select>
+                  </div>
+
+                  {/* 比例选择 */}
+                  <AspectRatioSelector
+                    value={selectedRatio}
+                    onChange={handleRatioChange}
+                  />
+
+                  {/* 质量模式 */}
+                  <div className="space-y-2 mb-4">
+                    <label className="text-sm font-medium">{t('params.quality')}</label>
+                    <select
+                      value={qualityMode}
+                      onChange={(e) => setQualityMode(e.target.value as any)}
+                      className="w-full px-3 py-2 border rounded-md bg-background"
+                    >
+                      <option value="economy">{t('quality.economy')}</option>
+                      <option value="standard">{t('quality.standard')}</option>
+                      <option value="ultra">{t('quality.ultra')}</option>
+                    </select>
+                  </div>
+
+                  {/* 风格选择 */}
+                  <StyleSelector
+                    value={selectedStyle}
+                    onChange={handleStyleChange}
+                  />
+
+                  {/* 高级参数（折叠） */}
+                  <div className="mt-4">
+                    <button
+                      onClick={() => setShowAdvanced(!showAdvanced)}
+                      className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground w-full"
+                    >
+                      {showAdvanced ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                      {language === 'zh-TW' ? '進階參數' : 'Advanced'}
+                    </button>
+                    {showAdvanced && (
+                      <div className="mt-3 space-y-3">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">
+                            {t('params.seed')} {t('params.seedHint')}
+                          </label>
+                          <input
+                            type="number"
+                            value={seed}
+                            onChange={(e) => setSeed(Number(e.target.value))}
+                            className="w-full px-3 py-2 border rounded-md bg-background"
+                            min={-1}
+                            max={999999}
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
+                          <div>
+                            <span className="font-medium">{language === 'zh-TW' ? '寬度' : 'Width'}:</span> {width}px
+                          </div>
+                          <div>
+                            <span className="font-medium">{language === 'zh-TW' ? '高度' : 'Height'}:</span> {height}px
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 生成按钮 */}
+                  <button
+                    onClick={handleGenerate}
+                    disabled={isGenerating}
+                    className="w-full mt-4 py-3 bg-primary text-primary-foreground rounded-lg font-semibold hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2 transition-all"
+                  >
+                    {isGenerating ? (
+                      <>
+                        <span className="animate-spin">⏳</span>
+                        {t('button.generating')}
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-5 h-5" />
+                        {t('button.generate')}
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* 中间：结果展示 */}
+              <div className="lg:col-span-1">
+                <div className="border rounded-lg p-4 bg-card sticky top-24">
+                  <div className="aspect-square bg-muted rounded-lg flex items-center justify-center overflow-hidden">
+                    {generatedImage ? (
+                      <img
+                        src={generatedImage}
+                        alt="Generated"
+                        className="w-full h-full object-contain"
+                      />
+                    ) : (
+                      <div className="text-center text-muted-foreground">
+                        <Sparkles className="w-16 h-16 mx-auto mb-4 opacity-20" />
+                        <p>{t('result.placeholder')}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* 右侧：提示词 */}
+              <div className="lg:col-span-1 space-y-4">
+                <div className="border rounded-lg p-4 bg-card">
+                  <h2 className="font-semibold mb-4">{t('prompt.title')}</h2>
+
+                  {/* 正面提示词 */}
+                  <div className="space-y-2 mb-4">
+                    <label className="text-sm font-medium">{t('prompt.positive')}</label>
+                    <textarea
+                      value={prompt}
+                      onChange={(e) => setPrompt(e.target.value)}
+                      placeholder={t('prompt.positivePlaceholder')}
+                      className="w-full px-3 py-2 border rounded-md bg-background resize-none"
+                      rows={8}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      {prompt.length}/1000 {t('prompt.charCount')}
+                    </p>
+                  </div>
+
+                  {/* 负面提示词 */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">{t('prompt.negative')}</label>
+                    <textarea
+                      value={negativePrompt}
+                      onChange={(e) => setNegativePrompt(e.target.value)}
+                      placeholder={t('prompt.negativePlaceholder')}
+                      className="w-full px-3 py-2 border rounded-md bg-background resize-none"
+                      rows={4}
                     />
                   </div>
-                  <div>
-                    <label className="text-sm font-medium">{t('params.height')}</label>
-                    <input
-                      type="number"
-                      value={height}
-                      onChange={(e) => setHeight(Number(e.target.value))}
-                      className="w-full px-3 py-2 border rounded-md bg-background"
-                      min={256}
-                      max={2048}
-                      step={64}
-                    />
-                  </div>
-                </div>
-
-                {/* 质量模式 */}
-                <div className="space-y-2 mb-4">
-                  <label className="text-sm font-medium">{t('params.quality')}</label>
-                  <select
-                    value={qualityMode}
-                    onChange={(e) => setQualityMode(e.target.value as any)}
-                    className="w-full px-3 py-2 border rounded-md bg-background"
-                  >
-                    <option value="economy">{t('quality.economy')}</option>
-                    <option value="standard">{t('quality.standard')}</option>
-                    <option value="ultra">{t('quality.ultra')}</option>
-                  </select>
-                </div>
-
-                {/* Seed */}
-                <div className="space-y-2 mb-4">
-                  <label className="text-sm font-medium">
-                    {t('params.seed')} {t('params.seedHint')}
-                  </label>
-                  <input
-                    type="number"
-                    value={seed}
-                    onChange={(e) => setSeed(Number(e.target.value))}
-                    className="w-full px-3 py-2 border rounded-md bg-background"
-                    min={-1}
-                    max={999999}
-                  />
-                </div>
-
-                {/* 生成按钮 */}
-                <button
-                  onClick={handleGenerate}
-                  disabled={isGenerating}
-                  className="w-full py-3 bg-primary text-primary-foreground rounded-lg font-semibold hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2"
-                >
-                  {isGenerating ? (
-                    <>
-                      <span className="animate-spin">⏳</span>
-                      {t('button.generating')}
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="w-5 h-5" />
-                      {t('button.generate')}
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-
-            {/* 中间：结果展示 */}
-            <div className="lg:col-span-1">
-              <div className="border rounded-lg p-4 bg-card min-h-[400px] flex items-center justify-center">
-                {generatedImage ? (
-                  <img
-                    src={generatedImage}
-                    alt="Generated"
-                    className="max-w-full h-auto rounded-lg"
-                  />
-                ) : (
-                  <div className="text-center text-muted-foreground">
-                    <Sparkles className="w-16 h-16 mx-auto mb-4 opacity-20" />
-                    <p>{t('result.placeholder')}</p>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* 右侧：提示词 */}
-            <div className="lg:col-span-1 space-y-4">
-              <div className="border rounded-lg p-4 bg-card">
-                <h2 className="font-semibold mb-4">{t('prompt.title')}</h2>
-
-                {/* 正面提示词 */}
-                <div className="space-y-2 mb-4">
-                  <label className="text-sm font-medium">{t('prompt.positive')}</label>
-                  <textarea
-                    value={prompt}
-                    onChange={(e) => setPrompt(e.target.value)}
-                    placeholder={t('prompt.positivePlaceholder')}
-                    className="w-full px-3 py-2 border rounded-md bg-background resize-none"
-                    rows={6}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    {prompt.length}/1000 {t('prompt.charCount')}
-                  </p>
-                </div>
-
-                {/* 负面提示词 */}
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">{t('prompt.negative')}</label>
-                  <textarea
-                    value={negativePrompt}
-                    onChange={(e) => setNegativePrompt(e.target.value)}
-                    placeholder={t('prompt.negativePlaceholder')}
-                    className="w-full px-3 py-2 border rounded-md bg-background resize-none"
-                    rows={3}
-                  />
                 </div>
               </div>
             </div>
-          </div>
+          ) : (
+            /* 历史记录页面 */
+            <div className="h-[calc(100vh-16rem)]">
+              <HistoryPanel />
+            </div>
+          )}
         </main>
 
         {/* 底部 */}
