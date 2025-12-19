@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
-import { Trash2, Download, RotateCcw } from 'lucide-react'
+import { Trash2, Download, RotateCcw, Database } from 'lucide-react'
 import { useLanguage } from '../contexts/LanguageContext'
 import { ImageViewer } from './ImageViewer'
+import { getImageFromDB, deleteImageFromDB, getStorageInfo, formatBytes } from '../utils/imageStorage'
 import type { HistoryItem } from '../types'
 
 interface HistoryPanelProps {
@@ -12,29 +13,75 @@ export function HistoryPanel({ onLoadParams }: HistoryPanelProps) {
   const { language } = useLanguage()
   const [history, setHistory] = useState<HistoryItem[]>([])
   const [selectedImage, setSelectedImage] = useState<{ image: string; index: number } | null>(null)
+  const [storageInfo, setStorageInfo] = useState<{ used: number; quota: number }>({ used: 0, quota: 0 })
 
   useEffect(() => {
-    const loadHistory = () => {
+    const loadHistory = async () => {
       const stored = localStorage.getItem('flux-ai-history')
       if (stored) {
-        setHistory(JSON.parse(stored))
+        const historyData = JSON.parse(stored) as HistoryItem[]
+        
+        // 从 IndexedDB 加载图片
+        const historyWithImages = await Promise.all(
+          historyData.map(async (item) => {
+            if (!item.result_image || !item.result_image.startsWith('blob:')) {
+              const imageUrl = await getImageFromDB(item.id)
+              if (imageUrl) {
+                return { ...item, result_image: imageUrl }
+              }
+            }
+            return item
+          })
+        )
+        
+        setHistory(historyWithImages)
       }
+      
+      // 获取存储信息
+      const info = await getStorageInfo()
+      setStorageInfo(info)
     }
+    
     loadHistory()
     window.addEventListener('storage', loadHistory)
     return () => window.removeEventListener('storage', loadHistory)
   }, [])
 
-  const handleDelete = (id: string) => {
-    const newHistory = history.filter(item => item.id !== id)
-    setHistory(newHistory)
-    localStorage.setItem('flux-ai-history', JSON.stringify(newHistory))
+  const handleDelete = async (id: string) => {
+    try {
+      // 从 IndexedDB 删除
+      await deleteImageFromDB(id)
+      
+      // 从 localStorage 删除
+      const newHistory = history.filter(item => item.id !== id)
+      setHistory(newHistory)
+      localStorage.setItem('flux-ai-history', JSON.stringify(newHistory))
+      
+      // 更新存储信息
+      const info = await getStorageInfo()
+      setStorageInfo(info)
+    } catch (error) {
+      console.error('Failed to delete:', error)
+    }
   }
 
-  const handleClearAll = () => {
+  const handleClearAll = async () => {
     if (confirm(language === 'zh-TW' ? '確定要清空所有歷史記錄嗎？' : 'Clear all history?')) {
-      setHistory([])
-      localStorage.removeItem('flux-ai-history')
+      try {
+        // 删除所有图片
+        for (const item of history) {
+          await deleteImageFromDB(item.id)
+        }
+        
+        setHistory([])
+        localStorage.removeItem('flux-ai-history')
+        
+        // 更新存储信息
+        const info = await getStorageInfo()
+        setStorageInfo(info)
+      } catch (error) {
+        console.error('Failed to clear all:', error)
+      }
     }
   }
 
@@ -76,9 +123,20 @@ export function HistoryPanel({ onLoadParams }: HistoryPanelProps) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-primary">
-          {language === 'zh-TW' ? '歷史記錄' : 'History'} ({history.length})
-        </h2>
+        <div>
+          <h2 className="text-lg font-semibold text-primary">
+            {language === 'zh-TW' ? '歷史記錄' : 'History'} ({history.length})
+          </h2>
+          {storageInfo.quota > 0 && (
+            <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+              <Database className="w-3 h-3" />
+              <span>
+                {language === 'zh-TW' ? '本地儲存' : 'Local Storage'}: {formatBytes(storageInfo.used)} / {formatBytes(storageInfo.quota)}
+                ({((storageInfo.used / storageInfo.quota) * 100).toFixed(1)}%)
+              </span>
+            </div>
+          )}
+        </div>
         <button
           onClick={handleClearAll}
           className="px-3 py-1.5 text-sm bg-destructive text-destructive-foreground rounded-md hover:opacity-90 transition-opacity"

@@ -8,6 +8,7 @@ import { HistoryPanel } from './components/HistoryPanel'
 import { PresetManager } from './components/PresetManager'
 import { ImageViewer } from './components/ImageViewer'
 import { delay } from './utils/retry'
+import { saveImageToDB, getImageFromDB } from './utils/imageStorage'
 import type { GenerateRequest, HistoryItem, Style } from './types'
 
 function App() {
@@ -200,6 +201,7 @@ function App() {
         setRetryInfo(null)
         setGenerationTime(finalTime)
 
+        // 保存历史记录
         const historyItem: HistoryItem = {
           id: Date.now().toString(),
           timestamp: Date.now(),
@@ -213,6 +215,14 @@ function App() {
           quality_mode: qualityMode,
           result_image: imageUrl,
           generation_time: finalTime,
+        }
+
+        // 保存图片到 IndexedDB (永久存储)
+        try {
+          await saveImageToDB(historyItem.id, imageUrl)
+          console.log('Image saved to IndexedDB:', historyItem.id)
+        } catch (error) {
+          console.error('Failed to save to IndexedDB:', error)
         }
 
         const history = JSON.parse(localStorage.getItem('flux-ai-history') || '[]')
@@ -373,7 +383,7 @@ function App() {
                   
                   {generatedImage && !isGenerating && (
                     <p className="text-xs text-center text-primary/60 mt-1">
-                      {language === 'zh-TW' ? '點擊放大查看' : 'Click to enlarge'}
+                      {language === 'zh-TW' ? '點擊放大查看 • 已永久保存' : 'Click to enlarge • Saved permanently'}
                     </p>
                   )}
                   
