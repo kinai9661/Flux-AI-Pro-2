@@ -24,8 +24,8 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     
     const response = await ai.run('@cf/meta/m2m100-1.2b', {
       text: text,
-      source_lang: 'chinese',
-      target_lang: 'english'
+      source_lang: 'zh',  // 修正：使用 'zh' 代替 'chinese'
+      target_lang: 'en'   // 修正：使用 'en' 代替 'english'
     })
 
     const translated = response.translated_text || text
@@ -37,13 +37,22 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     console.error('Translation error:', error)
     
     // 翻譯失敗時返回原文
-    const { text } = await context.request.json() as { text: string }
-    return new Response(JSON.stringify({ 
-      translated: text,
-      error: 'Translation failed, using original text'
-    }), {
-      headers: { 'Content-Type': 'application/json' },
-    })
+    try {
+      const { text } = await context.request.json() as { text: string }
+      return new Response(JSON.stringify({ 
+        translated: text,
+        error: 'Translation failed, using original text'
+      }), {
+        headers: { 'Content-Type': 'application/json' },
+      })
+    } catch {
+      return new Response(JSON.stringify({ 
+        error: 'Invalid request'
+      }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
   }
 }
 
