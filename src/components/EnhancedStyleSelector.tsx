@@ -15,7 +15,7 @@ interface StyleGroup {
   styles: Style[]
 }
 
-// 完整的风格分组（繁體中文）
+// 完整的風格分組（繁體中文）
 const styleGroups: StyleGroup[] = [
   {
     id: 'japanese',
@@ -108,11 +108,11 @@ const styleGroups: StyleGroup[] = [
     name: '特殊效果',
     nameEn: '特殊效果',
     styles: [
-      { id: 'neon', name: '霖虹燈', nameEn: '霖虹燈', prompt: 'neon lights, glowing, vibrant, electric' },
+      { id: 'neon', name: '霓虹燈', nameEn: '霓虹燈', prompt: 'neon lights, glowing, vibrant, electric' },
       { id: 'holographic', name: '全息', nameEn: '全息', prompt: 'holographic, iridescent, rainbow, futuristic' },
       { id: 'paper-cut', name: '剪紙', nameEn: '剪紙', prompt: 'paper cut art, layered, shadow, craft' },
       { id: 'stained-glass', name: '彩繪玻璃', nameEn: '彩繪玻璃', prompt: 'stained glass, colorful, mosaic, religious art' },
-      { id: 'origami', name: '摘紙', nameEn: '摘紙', prompt: 'origami, paper folding, geometric, japanese art' },
+      { id: 'origami', name: '摺紙', nameEn: '摺紙', prompt: 'origami, paper folding, geometric, japanese art' },
       { id: 'crystal', name: '水晶', nameEn: '水晶', prompt: 'crystal, transparent, refractive, gem-like, sparkling' },
       { id: 'metallic', name: '金屬', nameEn: '金屬', prompt: 'metallic, chrome, reflective, shiny, polished metal' },
       { id: 'glow', name: '發光', nameEn: '發光', prompt: 'glowing, luminous, radiant, light emission, aura' },
@@ -136,7 +136,7 @@ export function EnhancedStyleSelector({ value, onChange }: EnhancedStyleSelector
 
   const handleStyleSelect = (style: Style) => {
     if (value === style.id) {
-      // 取消选择
+      // 取消選擇
       onChange(undefined, undefined)
     } else {
       onChange(style.id, style)
@@ -147,14 +147,29 @@ export function EnhancedStyleSelector({ value, onChange }: EnhancedStyleSelector
     onChange(undefined, undefined)
   }
 
+  // 獲取當前選中的風格名稱
+  const getSelectedStyleName = (): string | undefined => {
+    if (!value) return undefined
+    
+    for (const group of styleGroups) {
+      const style = group.styles.find(s => s.id === value)
+      if (style) {
+        return language === 'zh-TW' ? style.name : style.nameEn
+      }
+    }
+    return undefined
+  }
+
+  const selectedStyleName = getSelectedStyleName()
+
   return (
     <div className="space-y-2 mb-4">
       <div className="flex items-center justify-between">
         <label className="text-sm font-medium">
           {language === 'zh-TW' ? '藝術風格' : 'Art Style'}
-          {value && (
-            <span className="ml-2 text-xs text-primary">
-              ({language === 'zh-TW' ? '已選擇' : 'Selected'})
+          {value && selectedStyleName && (
+            <span className="ml-2 text-xs text-primary font-normal">
+              ({language === 'zh-TW' ? '已選擇' : 'Selected'}: {selectedStyleName})
             </span>
           )}
         </label>
@@ -212,7 +227,7 @@ export function EnhancedStyleSelector({ value, onChange }: EnhancedStyleSelector
       {!value && (
         <p className="text-xs text-muted-foreground">
           {language === 'zh-TW' 
-            ? '💡 選擇風格以增強圖片效果，或留空使用原始提示詞'
+            ? '💡 選擇風格以增強圖片效果,或留空使用原始提示詞'
             : '💡 Select a style to enhance your image, or leave empty'
           }
         </p>
