@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState } from 'react'
 import { Search, Sparkles, Star, Clock, X, ChevronDown, ChevronRight } from 'lucide-react'
 import { styleCategories, getAllStyles, getPopularStyles, type Style } from '../data/styles'
 import { useLanguage } from '../contexts/LanguageContext'
