@@ -18,9 +18,9 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
     
-    /* 主色调 - 橙色系（Flux 品牌色） */
-    --primary: 25 95% 53%;                /* 鲜艳橙色 #f59e0b */
-    --primary-foreground: 0 0% 100%;      /* 白色文字 */
+    /* 主色调 - 霓虹青色 */
+    --primary: 186 100% 53%;              /* 霓虹青 #22D3EE */
+    --primary-foreground: 222.2 84% 4.9%; /* 深色文字 */
     
     /* 次要色 */
     --secondary: 210 40% 96.1%;           /* 浅灰蓝 */
@@ -31,8 +31,8 @@
     --muted-foreground: 215.4 16.3% 46.9%; /* 中灰文字 */
     
     /* 强调色 */
-    --accent: 25 95% 53%;                 /* 橙色强调 */
-    --accent-foreground: 0 0% 100%;       /* 白色文字 */
+    --accent: 186 100% 53%;               /* 霓虹青强调 */
+    --accent-foreground: 222.2 84% 4.9%;  /* 深色文字 */
     
     /* 危险/错误色 */
     --destructive: 0 84.2% 60.2%;         /* 红色 */
@@ -41,7 +41,7 @@
     /* 边框和输入框 */
     --border: 214.3 31.8% 91.4%;          /* 浅灰边框 */
     --input: 214.3 31.8% 91.4%;           /* 输入框边框 */
-    --ring: 25 95% 53%;                   /* 橙色聚焦环 */
+    --ring: 186 100% 53%;                 /* 青色聚焦环 */
     
     --radius: 0.5rem;
   }
@@ -49,30 +49,30 @@
   .dark {
     /* 背景色 - 深色模式 */
     --background: 222.2 84% 4.9%;         /* 深蓝黑背景 */
-    --foreground: 210 40% 98%;            /* 近白文字 */
+    --foreground: 186 100% 80%;           /* 浅青色文字 */
     
     /* 卡片 */
     --card: 217.2 32.6% 17.5%;            /* 深灰卡片 */
-    --card-foreground: 210 40% 98%;       /* 亮白文字 */
+    --card-foreground: 186 100% 80%;      /* 浅青色文字 */
     
     /* 弹出框 */
     --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+    --popover-foreground: 186 100% 80%;
     
-    /* 主色调 - 更亮的橙色 */
-    --primary: 25 95% 58%;                /* 亮橙色 */
+    /* 主色调 - 更亮的霓虹青 */
+    --primary: 186 100% 53%;              /* 霓虹青 #22D3EE */
     --primary-foreground: 222.2 84% 4.9%; /* 深色文字 */
     
     /* 次要色 */
     --secondary: 217.2 32.6% 17.5%;       /* 深灰 */
-    --secondary-foreground: 210 40% 98%;  /* 亮白 */
+    --secondary-foreground: 186 100% 80%; /* 浅青 */
     
     /* 静音色 */
     --muted: 217.2 32.6% 17.5%;           /* 深灰背景 */
-    --muted-foreground: 215 20.2% 65.1%;  /* 中灰文字（更亮） */
+    --muted-foreground: 186 50% 70%;      /* 中等青灰文字 */
     
     /* 强调色 */
-    --accent: 25 95% 58%;                 /* 亮橙色 */
+    --accent: 186 100% 53%;               /* 霓虹青 */
     --accent-foreground: 222.2 84% 4.9%;  /* 深色文字 */
     
     /* 危险色 */
@@ -82,7 +82,7 @@
     /* 边框和输入框 */
     --border: 217.2 32.6% 25%;            /* 更亮的边框 */
     --input: 217.2 32.6% 25%;             /* 更亮的输入框 */
-    --ring: 25 95% 58%;                   /* 亮橙色聚焦环 */
+    --ring: 186 100% 53%;                 /* 霓虹青聚焦环 */
   }
 }
 
@@ -101,6 +101,45 @@
     text-rendering: optimizeLegibility;
   }
   
+  /* 霓虹青色渐变标题 */
+  .dark h1 {
+    background: linear-gradient(135deg, #22D3EE 0%, #10B981 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-shadow: 0 0 20px rgba(34, 211, 238, 0.3);
+  }
+  
+  /* 副标题霓虹效果 */
+  .dark header p {
+    color: #5EEAD4;
+    text-shadow: 0 0 10px rgba(94, 234, 212, 0.5);
+  }
+  
+  /* 标签文字 */
+  .dark label {
+    color: #22D3EE;
+    font-weight: 500;
+  }
+  
+  /* 输入框文字 */
+  .dark input,
+  .dark textarea,
+  .dark select {
+    color: #E2E8F0;
+  }
+  
+  /* 按钮霓虹效果 */
+  .dark button.bg-primary {
+    box-shadow: 0 0 20px rgba(34, 211, 238, 0.5);
+    transition: all 0.3s ease;
+  }
+  
+  .dark button.bg-primary:hover:not(:disabled) {
+    box-shadow: 0 0 30px rgba(34, 211, 238, 0.8);
+    transform: translateY(-1px);
+  }
+  
   /* 优化滚动条 */
   ::-webkit-scrollbar {
     width: 8px;
@@ -112,11 +151,11 @@
   }
   
   ::-webkit-scrollbar-thumb {
-    @apply bg-muted-foreground/30 rounded-full;
+    @apply bg-primary/30 rounded-full;
   }
   
   ::-webkit-scrollbar-thumb:hover {
-    @apply bg-muted-foreground/50;
+    @apply bg-primary/50;
   }
   
   /* 优化文字渲染 */
@@ -138,6 +177,7 @@
   /* 强调文字 */
   strong, b {
     font-weight: 700;
+    color: hsl(var(--primary));
   }
   
   /* 优化输入框焦点 */
@@ -145,11 +185,12 @@
   textarea:focus,
   select:focus {
     @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+    box-shadow: 0 0 15px rgba(34, 211, 238, 0.3);
   }
   
   /* 优化按钮悬停 */
   button:not(:disabled):hover {
-    @apply brightness-95;
+    @apply brightness-110;
   }
   
   button:disabled {
@@ -159,5 +200,16 @@
   /* 优化代码字体 */
   code, pre {
     font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+    color: hsl(var(--primary));
+  }
+  
+  /* 卡片霓虹边框效果 */
+  .dark .border {
+    border-color: rgba(34, 211, 238, 0.2);
+  }
+  
+  .dark .border:hover {
+    border-color: rgba(34, 211, 238, 0.4);
+    transition: border-color 0.3s ease;
   }
 }
