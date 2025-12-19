@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react'
-import { Download, Trash2, Copy, Search, Filter } from 'lucide-react'
+import { Download, Trash2, Copy, Search } from 'lucide-react'
 import { useLanguage } from '../contexts/LanguageContext'
 import type { HistoryItem } from '../types'
 
 export function HistoryPanel() {
-  const { language, t } = useLanguage()
+  const { language } = useLanguage()
   const [history, setHistory] = useState<HistoryItem[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [filterModel, setFilterModel] = useState<string>('all')
@@ -54,8 +54,6 @@ export function HistoryPanel() {
 
   // 复制参数
   const copyParams = (item: HistoryItem) => {
-    // 这里需要触发父组件的参数应用
-    // 暂时只复制提示词
     navigator.clipboard.writeText(item.prompt)
     alert(language === 'zh-TW' ? '參數已複製' : 'Parameters copied')
   }

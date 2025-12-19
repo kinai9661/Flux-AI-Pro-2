@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 
 type Language = 'zh-TW' | 'en'
 
@@ -15,7 +15,6 @@ interface LanguageProviderProps {
 }
 
 export function LanguageProvider({ children }: LanguageProviderProps) {
-  // 初始化语言：LocalStorage > 浏览器语言 > 默认繁体
   const getInitialLanguage = (): Language => {
     const stored = localStorage.getItem('flux-ai-language')
     if (stored === 'zh-TW' || stored === 'en') return stored
@@ -27,19 +26,16 @@ export function LanguageProvider({ children }: LanguageProviderProps) {
 
   const [language, setLanguageState] = useState<Language>(getInitialLanguage)
 
-  // 切换语言并持久化
   const setLanguage = (lang: Language) => {
     setLanguageState(lang)
     localStorage.setItem('flux-ai-language', lang)
     document.documentElement.lang = lang
   }
 
-  // 初始化时设置 HTML lang 属性
   useEffect(() => {
     document.documentElement.lang = language
   }, [])
 
-  // 翻译函数
   const t = (key: string): string => {
     const translations = language === 'zh-TW' ? zhTW : en
     const keys = key.split('.')
@@ -66,8 +62,6 @@ export function useLanguage() {
   }
   return context
 }
-
-// ========== 翻译资源 ==========
 
 const zhTW = {
   header: {

@@ -7,7 +7,6 @@ import { AspectRatioSelector } from './components/AspectRatioSelector'
 import { HistoryPanel } from './components/HistoryPanel'
 import { PresetManager } from './components/PresetManager'
 import type { GenerateRequest, HistoryItem, Style } from './types'
-import type { Preset } from './utils/presets'
 
 function App() {
   const { t, language } = useLanguage()

@@ -32,3 +32,13 @@ export interface HistoryItem extends GenerateRequest {
   result_image?: string
   generation_time?: number
 }
+
+export interface Style {
+  id: string
+  name: string
+  nameEn: string
+  prompt: string
+  negativePrompt?: string
+  preview?: string
+  popular?: boolean
+}

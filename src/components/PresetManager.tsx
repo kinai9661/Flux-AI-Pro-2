@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
-import { Save, Trash2, Star } from 'lucide-react'
+import { Save, Trash2 } from 'lucide-react'
 import { useLanguage } from '../contexts/LanguageContext'
-import { defaultPresets, getAllPresets, saveCustomPreset, deleteCustomPreset, type Preset } from '../utils/presets'
+import { getAllPresets, saveCustomPreset, deleteCustomPreset, type Preset } from '../utils/presets'
 import type { GenerateRequest } from '../types'
 
 interface PresetManagerProps {
