@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Sparkles, Settings, Moon, Sun, Image as ImageIcon, History, ChevronDown, ChevronUp, AlertCircle, Clock } from 'lucide-react'
+import { Sparkles, Settings, Moon, Sun, Image as ImageIcon, History, ChevronDown, ChevronUp, AlertCircle, Clock, Languages } from 'lucide-react'
 import { useLanguage } from './contexts/LanguageContext'
 import { LanguageSwitch } from './components/LanguageSwitch'
 import { EnhancedStyleSelector } from './components/EnhancedStyleSelector'
@@ -32,6 +32,8 @@ function App() {
   const [retryInfo, setRetryInfo] = useState<{ attempt: number; maxAttempts: number; waitTime: number } | null>(null)
   const [generationTime, setGenerationTime] = useState<number>(0)
   const [elapsedTime, setElapsedTime] = useState<number>(0)
+  const [translatedPrompt, setTranslatedPrompt] = useState<string>('')
+  const [isTranslating, setIsTranslating] = useState(false)
   
   // UI 状态
   const [showAdvanced, setShowAdvanced] = useState(false)
@@ -170,6 +172,7 @@ function App() {
     setGeneratedImage(null)
     setRetryInfo(null)
     setGenerationTime(0)
+    setTranslatedPrompt('')
     const startTime = Date.now()
     const maxRetries = 2
     const retryDelay = 15000
@@ -177,20 +180,25 @@ function App() {
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
         // 翻译提示词（仅翻译中文部分）
-        const translatedPrompt = await translatePrompt(prompt)
+        setIsTranslating(true)
+        const translatedPromptText = await translatePrompt(prompt)
         const translatedNegative = negativePrompt ? await translatePrompt(negativePrompt) : ''
+        setIsTranslating(false)
 
-        let finalPrompt = translatedPrompt
+        let finalPrompt = translatedPromptText
         let finalNegativePrompt = translatedNegative
 
         if (currentStyle) {
-          finalPrompt = `${translatedPrompt}, ${currentStyle.prompt}`
+          finalPrompt = `${translatedPromptText}, ${currentStyle.prompt}`
           if (currentStyle.negativePrompt) {
             finalNegativePrompt = finalNegativePrompt 
               ? `${finalNegativePrompt}, ${currentStyle.negativePrompt}`
               : currentStyle.negativePrompt
           }
         }
+
+        // 顯示翻譯後的提示詞
+        setTranslatedPrompt(finalPrompt)
 
         const response = await fetch('/_internal/generate', {
           method: 'POST',
@@ -286,6 +294,7 @@ function App() {
         console.error('Generation error:', error)
         if (attempt === maxRetries) {
           setRetryInfo(null)
+          setIsTranslating(false)
           alert(
             language === 'zh-TW'
               ? `生成失敗：${error instanceof Error ? error.message : t('alert.error')}`
@@ -296,6 +305,7 @@ function App() {
     }
 
     setIsGenerating(false)
+    setIsTranslating(false)
   }
 
   return (
@@ -432,6 +442,21 @@ function App() {
                       {language === 'zh-TW' ? '點擊放大查看 • 已永久保存' : 'Click to enlarge • Saved permanently'}
                     </p>
                   )}
+
+                  {/* 翻譯後的提示詞 */}
+                  {translatedPrompt && !isGenerating && (
+                    <div className="mt-3 p-3 bg-primary/5 border border-primary/10 rounded-md">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Languages className="w-3 h-3 text-primary" />
+                        <span className="text-xs font-medium text-primary">
+                          {language === 'zh-TW' ? '翻譯後的提示詞' : 'Translated Prompt'}
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground break-words">
+                        {translatedPrompt}
+                      </p>
+                    </div>
+                  )}
                   
                   <button
                     onClick={handleGenerate}
@@ -441,7 +466,9 @@ function App() {
                     {isGenerating ? (
                       <>
                         <span className="animate-spin">⏳</span>
-                        {retryInfo 
+                        {isTranslating
+                          ? (language === 'zh-TW' ? '翻譯中...' : 'Translating...')
+                          : retryInfo 
                           ? (language === 'zh-TW' ? `重試中 (${retryInfo.attempt}/${retryInfo.maxAttempts})` : `Retrying (${retryInfo.attempt}/${retryInfo.maxAttempts})`)
                           : `${language === 'zh-TW' ? '生成中' : 'Generating'}... ${elapsedTime.toFixed(1)}s`
                         }
