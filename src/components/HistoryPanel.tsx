@@ -58,7 +58,7 @@ export function HistoryPanel() {
   // 导航到其他图片
   const handleNavigate = (index: number) => {
     if (history[index]?.result_image) {
-      setSelectedImage({ image: history[index].result_image, index })
+      setSelectedImage({ image: history[index].result_image!, index })
     }
   }
 
@@ -103,7 +103,7 @@ export function HistoryPanel() {
             {item.result_image && (
               <div 
                 className="aspect-square bg-muted rounded-lg mb-3 overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
-                onClick={() => setSelectedImage({ image: item.result_image, index })}
+                onClick={() => setSelectedImage({ image: item.result_image!, index })}
               >
                 <img
                   src={item.result_image}
