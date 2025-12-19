@@ -111,10 +111,6 @@ function App() {
       '1536x1024': 'landscape',
       '768x1344': 'portrait-tall',
       '1344x768': 'landscape-wide',
-      // ZIMAGE 1K 比例
-      '1024x1024': 'square-1k',
-      '1024x1536': 'portrait-1k',
-      '1536x1024': 'landscape-1k',
       // ZIMAGE 2K 比例
       '2048x2048': 'square-2k',
       '1536x2048': 'portrait-2k',
