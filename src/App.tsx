@@ -98,7 +98,10 @@ function App() {
     setHeight(item.height)
     setSeed(item.seed || -1)
     setSelectedStyle(item.style)
-    setQualityMode(item.quality_mode)
+    // 添加类型检查
+    if (item.quality_mode === 'economy' || item.quality_mode === 'standard' || item.quality_mode === 'ultra') {
+      setQualityMode(item.quality_mode)
+    }
     
     // 设置比例
     const ratio = `${item.width}x${item.height}`
