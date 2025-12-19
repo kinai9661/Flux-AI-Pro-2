@@ -4,48 +4,83 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    /* 背景色 */
+    --background: 0 0% 100%;              /* 纯白背景 */
+    --foreground: 222.2 84% 4.9%;        /* 深蓝黑文字 */
+    
+    /* 卡片 */
+    --card: 0 0% 100%;                    /* 白色卡片 */
+    --card-foreground: 222.2 84% 4.9%;   /* 深色文字 */
+    
+    /* 弹出框 */
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    
+    /* 主色调 - 橙色系（Flux 品牌色） */
+    --primary: 25 95% 53%;                /* 鲜艳橙色 #f59e0b */
+    --primary-foreground: 0 0% 100%;      /* 白色文字 */
+    
+    /* 次要色 */
+    --secondary: 210 40% 96.1%;           /* 浅灰蓝 */
+    --secondary-foreground: 222.2 47.4% 11.2%; /* 深蓝黑 */
+    
+    /* 静音色（次要文字） */
+    --muted: 210 40% 96.1%;               /* 浅灰背景 */
+    --muted-foreground: 215.4 16.3% 46.9%; /* 中灰文字 */
+    
+    /* 强调色 */
+    --accent: 25 95% 53%;                 /* 橙色强调 */
+    --accent-foreground: 0 0% 100%;       /* 白色文字 */
+    
+    /* 危险/错误色 */
+    --destructive: 0 84.2% 60.2%;         /* 红色 */
+    --destructive-foreground: 0 0% 100%;  /* 白色文字 */
+    
+    /* 边框和输入框 */
+    --border: 214.3 31.8% 91.4%;          /* 浅灰边框 */
+    --input: 214.3 31.8% 91.4%;           /* 输入框边框 */
+    --ring: 25 95% 53%;                   /* 橙色聚焦环 */
+    
     --radius: 0.5rem;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
+    /* 背景色 - 深色模式 */
+    --background: 222.2 84% 4.9%;         /* 深蓝黑背景 */
+    --foreground: 210 40% 98%;            /* 近白文字 */
+    
+    /* 卡片 */
+    --card: 217.2 32.6% 17.5%;            /* 深灰卡片 */
+    --card-foreground: 210 40% 98%;       /* 亮白文字 */
+    
+    /* 弹出框 */
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
+    
+    /* 主色调 - 更亮的橙色 */
+    --primary: 25 95% 58%;                /* 亮橙色 */
+    --primary-foreground: 222.2 84% 4.9%; /* 深色文字 */
+    
+    /* 次要色 */
+    --secondary: 217.2 32.6% 17.5%;       /* 深灰 */
+    --secondary-foreground: 210 40% 98%;  /* 亮白 */
+    
+    /* 静音色 */
+    --muted: 217.2 32.6% 17.5%;           /* 深灰背景 */
+    --muted-foreground: 215 20.2% 65.1%;  /* 中灰文字（更亮） */
+    
+    /* 强调色 */
+    --accent: 25 95% 58%;                 /* 亮橙色 */
+    --accent-foreground: 222.2 84% 4.9%;  /* 深色文字 */
+    
+    /* 危险色 */
+    --destructive: 0 62.8% 30.6%;         /* 深红 */
+    --destructive-foreground: 210 40% 98%; /* 亮白文字 */
+    
+    /* 边框和输入框 */
+    --border: 217.2 32.6% 25%;            /* 更亮的边框 */
+    --input: 217.2 32.6% 25%;             /* 更亮的输入框 */
+    --ring: 25 95% 58%;                   /* 亮橙色聚焦环 */
   }
 }
 
@@ -53,7 +88,48 @@
   * {
     @apply border-border;
   }
+  
   body {
     @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+  
+  /* 优化滚动条 */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    @apply bg-muted;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    @apply bg-muted-foreground/30 rounded-full;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-muted-foreground/50;
+  }
+  
+  /* 优化文字渲染 */
+  h1, h2, h3, h4, h5, h6 {
+    @apply text-foreground font-semibold;
+  }
+  
+  /* 优化输入框焦点 */
+  input:focus,
+  textarea:focus,
+  select:focus {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
+  
+  /* 优化按钮悬停 */
+  button:not(:disabled):hover {
+    @apply brightness-95;
+  }
+  
+  button:disabled {
+    @apply cursor-not-allowed opacity-50;
   }
 }
