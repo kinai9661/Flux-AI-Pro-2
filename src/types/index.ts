@@ -30,4 +30,5 @@ export interface HistoryItem extends GenerateRequest {
   id: string
   timestamp: number
   result_image?: string
+  generation_time?: number
 }
