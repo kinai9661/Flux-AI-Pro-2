@@ -1,31 +1,12 @@
-name = "flux-ai-pro-2"
+name = "fluxaipor2"
 main = "worker.js"
-compatibility_date = "2024-12-01"
+compatibility_date = "2024-11-01"
+compatibility_flags = ["nodejs_compat"]
 
-# 靜態資產配置
-assets = { directory = "./dist" }
+workers_dev = true
 
-# Workers AI 繫定（中文翻譯）
+# 環境變量（需要手動設置）
+# wrangler secret put POLLINATIONS_API_KEY
+
 [ai]
 binding = "AI"
-
-# 環境變量
-[vars]
-WORKER_VERSION = "10.0.0-ui-upgrade"
-DEFAULT_MODEL = "flux"
-MAX_WIDTH = 2048
-MAX_HEIGHT = 2048
-MAX_TIMEOUT = 120000
-ENVIRONMENT = "production"
-API_ENDPOINT = "https://gen.pollinations.ai"
-
-# 自定義域名（可選）
-# routes = [
-#   { pattern = "flux-ai-pro-2.your-domain.com/*", zone_name = "your-domain.com" }
-# ]
-
-# KV 緩存（可選）
-# [[kv_namespaces]]
-# binding = "FLUX_CACHE"
-# id = "your-kv-namespace-id"
-# preview_id = "your-preview-kv-namespace-id"
