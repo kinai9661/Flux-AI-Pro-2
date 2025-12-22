@@ -29,3 +29,4 @@ API_ENDPOINT = "https://gen.pollinations.ai"
 # binding = "FLUX_CACHE"
 # id = "your-kv-namespace-id"
 # preview_id = "your-preview-kv-namespace-id"
+
