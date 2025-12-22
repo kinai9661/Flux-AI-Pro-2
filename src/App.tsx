@@ -1,9 +1,8 @@
 import { useState } from 'react'
-import { Sparkles, Settings, History, Moon, Sun } from 'lucide-react'
+import { Sparkles, Settings, Moon, Sun } from 'lucide-react'
 
 function App() {
   const [darkMode, setDarkMode] = useState(true)
-  const [activeTab, setActiveTab] = useState<'generate' | 'history'>('generate')
   
   // 生成参数状态
   const [prompt, setPrompt] = useState('')
