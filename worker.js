@@ -1200,3 +1200,2123 @@ async function handleInternalGenerate(request, env, ctx) {
     });
   }
 }
+// =================================================================================
+// Web UI 界面處理函數（使用 Radix UI）
+// =================================================================================
+
+function handleUI() {
+  const authStatus = CONFIG.POLLINATIONS_AUTH.enabled ? 
+    '<span style="color:#22c55e;font-weight:600">🔐 已認證</span>' : 
+    '<span style="color:#f59e0b;font-weight:600">⚠️ 需要 API Key</span>';
+    
+  const apiEndpoint = CONFIG.PROVIDERS.pollinations.endpoint;
+  const stylesCount = Object.keys(CONFIG.STYLE_PRESETS).length;
+  
+  // 生成風格選項
+  const styleCategories = CONFIG.STYLE_CATEGORIES;
+  const stylePresets = CONFIG.STYLE_PRESETS;
+  
+  let styleOptionsHTML = '';
+  const sortedCategories = Object.entries(styleCategories)
+    .sort((a, b) => a[1].order - b[1].order);
+  
+  for (const [categoryKey, categoryInfo] of sortedCategories) {
+    const stylesInCategory = Object.entries(stylePresets)
+      .filter(([key, style]) => style.category === categoryKey);
+    
+    if (stylesInCategory.length > 0) {
+      styleOptionsHTML += `<optgroup label="${categoryInfo.icon} ${categoryInfo.name}">`;
+      
+      for (const [styleKey, styleConfig] of stylesInCategory) {
+        const selected = styleKey === 'none' ? ' selected' : '';
+        styleOptionsHTML += `<option value="${styleKey}"${selected}>${styleConfig.icon} ${styleConfig.name}</option>`;
+      }
+      
+      styleOptionsHTML += '</optgroup>';
+    }
+  }
+  
+  const html = `<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flux AI Pro v${CONFIG.PROJECT_VERSION} - Radix UI Edition</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎨</text></svg>">
+
+<!-- Radix UI 和依賴 -->
+<script src="https://unpkg.com/@radix-ui/react-dialog@1.0.5/dist/index.umd.js"></script>
+<script src="https://unpkg.com/@radix-ui/react-tabs@1.0.4/dist/index.umd.js"></script>
+<script src="https://unpkg.com/@radix-ui/react-select@2.0.0/dist/index.umd.js"></script>
+<script src="https://unpkg.com/@radix-ui/react-switch@1.0.3/dist/index.umd.js"></script>
+<script src="https://unpkg.com/@radix-ui/react-tooltip@1.0.7/dist/index.umd.js"></script>
+<script src="https://unpkg.com/@radix-ui/react-alert-dialog@1.0.5/dist/index.umd.js"></script>
+<script src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
+
+<style>
+/* ===== 基礎重置 ===== */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+/* ===== CSS 變量 - 現代深色主題 ===== */
+:root {
+  --bg-primary: #0a0a0a;
+  --bg-secondary: #1a1a2e;
+  --bg-tertiary: rgba(255, 255, 255, 0.03);
+  --bg-card: rgba(255, 255, 255, 0.05);
+  --bg-hover: rgba(255, 255, 255, 0.08);
+  
+  --text-primary: #ffffff;
+  --text-secondary: #e5e7eb;
+  --text-tertiary: #9ca3af;
+  --text-muted: #6b7280;
+  
+  --accent-primary: #f59e0b;
+  --accent-secondary: #d97706;
+  --accent-hover: #fbbf24;
+  
+  --success: #10b981;
+  --success-bg: rgba(16, 185, 129, 0.1);
+  --warning: #f59e0b;
+  --warning-bg: rgba(245, 158, 11, 0.1);
+  --error: #ef4444;
+  --error-bg: rgba(239, 68, 68, 0.1);
+  --info: #8b5cf6;
+  --info-bg: rgba(139, 92, 246, 0.1);
+  
+  --border-primary: rgba(255, 255, 255, 0.1);
+  --border-secondary: rgba(255, 255, 255, 0.2);
+  
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
+  --shadow-accent: 0 4px 20px rgba(245, 158, 11, 0.3);
+  
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-full: 9999px;
+  
+  --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ===== 基礎樣式 ===== */
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', sans-serif;
+  background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+  color: var(--text-primary);
+  line-height: 1.6;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ===== Radix UI Tabs 樣式 ===== */
+[data-radix-tabs-root] {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+[data-radix-tabs-list] {
+  display: flex;
+  gap: 8px;
+  padding: 0;
+  background: var(--bg-tertiary);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border-primary);
+}
+
+[data-radix-tabs-trigger] {
+  all: unset;
+  padding: 16px 24px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  border-bottom: 2px solid transparent;
+  transition: var(--transition);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+[data-radix-tabs-trigger]:hover {
+  color: var(--text-secondary);
+  background: var(--bg-hover);
+}
+
+[data-radix-tabs-trigger][data-state="active"] {
+  color: var(--accent-primary);
+  border-bottom-color: var(--accent-primary);
+  background: var(--bg-card);
+}
+
+[data-radix-tabs-content] {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0;
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ===== Radix UI Dialog (Modal) 樣式 ===== */
+[data-radix-dialog-overlay] {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(8px);
+  z-index: 1000;
+  animation: overlayShow 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes overlayShow {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+[data-radix-dialog-content] {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  max-width: 90vw;
+  max-height: 90vh;
+  z-index: 1001;
+  border-radius: var(--radius-lg);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  box-shadow: var(--shadow-lg);
+  animation: contentShow 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  padding: 0;
+}
+
+@keyframes contentShow {
+  from { opacity: 0; transform: translate(-50%, -48%) scale(0.96); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+[data-radix-dialog-close] {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-full);
+  background: var(--bg-hover);
+  border: 1px solid var(--border-primary);
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--transition);
+  font-size: 24px;
+}
+
+[data-radix-dialog-close]:hover {
+  background: var(--bg-card);
+  transform: rotate(90deg);
+}
+
+/* ===== Radix UI Select 樣式 ===== */
+[data-radix-select-trigger] {
+  all: unset;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 12px 16px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: 14px;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+[data-radix-select-trigger]:hover {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px var(--warning-bg);
+}
+
+[data-radix-select-trigger]:focus {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px var(--warning-bg);
+}
+
+[data-radix-select-content] {
+  overflow: hidden;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  z-index: 100;
+}
+
+[data-radix-select-viewport] {
+  padding: 8px;
+}
+
+[data-radix-select-item] {
+  all: unset;
+  display: flex;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: 14px;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+[data-radix-select-item]:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+[data-radix-select-item][data-highlighted] {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+[data-radix-select-item][data-state="checked"] {
+  background: var(--warning-bg);
+  color: var(--accent-primary);
+  font-weight: 600;
+}
+
+/* ===== Radix UI Switch 樣式 ===== */
+[data-radix-switch-root] {
+  all: unset;
+  width: 44px;
+  height: 24px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-full);
+  position: relative;
+  cursor: pointer;
+  transition: var(--transition);
+  border: 1px solid var(--border-primary);
+}
+
+[data-radix-switch-root]:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+[data-radix-switch-root][data-state="checked"] {
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+}
+
+[data-radix-switch-thumb] {
+  display: block;
+  width: 18px;
+  height: 18px;
+  background: white;
+  border-radius: var(--radius-full);
+  transition: transform 0.2s;
+  transform: translateX(2px);
+  will-change: transform;
+}
+
+[data-radix-switch-root][data-state="checked"] [data-radix-switch-thumb] {
+  transform: translateX(22px);
+}
+
+/* ===== Radix UI Tooltip 樣式 ===== */
+[data-radix-tooltip-content] {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  border: 1px solid var(--border-primary);
+  box-shadow: var(--shadow-md);
+  z-index: 1000;
+  animation: tooltipShow 0.2s ease-out;
+}
+
+@keyframes tooltipShow {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* ===== 容器布局 ===== */
+.app-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.top-header {
+  background: var(--bg-tertiary);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border-primary);
+  padding: 16px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--accent-primary);
+  text-shadow: 0 0 20px rgba(245, 158, 11, 0.5);
+}
+
+.badge {
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  font-size: 11px;
+  font-weight: 700;
+  display: inline-block;
+}
+
+.badge-version {
+  background: linear-gradient(135deg, var(--success) 0%, #059669 100%);
+  color: white;
+}
+
+.badge-new {
+  background: linear-gradient(135deg, #ec4899 0%, #db2777 100%);
+  color: white;
+}
+
+.badge-styles {
+  background: linear-gradient(135deg, var(--info) 0%, #7c3aed 100%);
+  color: white;
+}
+
+.api-status {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.api-status-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.api-endpoint {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* ===== 主內容區 ===== */
+.content-wrapper {
+  flex: 1;
+  overflow: hidden;
+}
+
+.generate-layout {
+  display: grid;
+  grid-template-columns: 320px 1fr 380px;
+  gap: 0;
+  height: 100%;
+}
+
+.panel {
+  overflow-y: auto;
+  padding: 24px;
+  border-right: 1px solid var(--border-primary);
+}
+
+.panel:last-child {
+  border-right: none;
+}
+
+.panel-left {
+  background: var(--bg-tertiary);
+}
+
+.panel-center {
+  background: transparent;
+}
+
+.panel-right {
+  background: var(--bg-tertiary);
+}
+
+/* ===== 響應式設計 ===== */
+@media (max-width: 1400px) {
+  .generate-layout {
+    grid-template-columns: 280px 1fr 320px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .generate-layout {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto 1fr;
+  }
+  
+  .panel {
+    border-right: none;
+    border-bottom: 1px solid var(--border-primary);
+  }
+  
+  .panel:last-child {
+    border-bottom: none;
+  }
+}
+
+/* ===== 表單組件 ===== */
+.section-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--accent-primary);
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+.form-input,
+.form-select,
+.form-textarea {
+  width: 100%;
+  padding: 12px 16px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: 14px;
+  font-family: inherit;
+  transition: var(--transition);
+}
+
+.form-input:focus,
+.form-select:focus,
+.form-textarea:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px var(--warning-bg);
+}
+
+.form-textarea {
+  min-height: 120px;
+  resize: vertical;
+  line-height: 1.6;
+}
+
+.form-hint {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 6px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.form-hint.success {
+  color: var(--success);
+}
+
+.form-hint.warning {
+  color: var(--warning);
+}
+
+.form-hint.info {
+  color: var(--info);
+}
+
+/* ===== 按鈕組件 ===== */
+.btn {
+  padding: 12px 24px;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: var(--transition);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  font-family: inherit;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);
+  color: white;
+  box-shadow: var(--shadow-accent);
+}
+
+.btn-primary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 24px rgba(245, 158, 11, 0.4);
+}
+
+.btn-primary:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border: 1px solid var(--border-secondary);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: var(--bg-hover);
+  border-color: var(--border-primary);
+}
+
+.btn-danger {
+  background: linear-gradient(135deg, var(--error) 0%, #dc2626 100%);
+  color: white;
+}
+
+.btn-danger:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 24px rgba(239, 68, 68, 0.4);
+}
+
+/* ===== 圖片畫廊 ===== */
+.gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+.gallery-item {
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  transition: var(--transition);
+}
+
+.gallery-item:hover {
+  transform: translateY(-5px);
+  box-shadow: var(--shadow-accent);
+}
+
+.gallery-image {
+  width: 100%;
+  height: 280px;
+  object-fit: cover;
+  display: block;
+  cursor: pointer;
+}
+
+.gallery-info {
+  padding: 16px;
+}
+
+.gallery-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.meta-badge {
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.meta-badge.model {
+  background: var(--warning-bg);
+  color: var(--warning);
+}
+
+.meta-badge.seed {
+  background: var(--success-bg);
+  color: var(--success);
+}
+
+.meta-badge.style {
+  background: var(--info-bg);
+  color: var(--info);
+}
+
+.gallery-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.action-btn {
+  flex: 1;
+  padding: 8px 12px;
+  background: var(--bg-hover);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+  transition: var(--transition);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.action-btn:hover {
+  background: var(--bg-card);
+  border-color: var(--accent-primary);
+  color: var(--text-primary);
+}
+
+.action-btn.delete {
+  border-color: rgba(239, 68, 68, 0.5);
+}
+
+.action-btn.delete:hover {
+  background: var(--error-bg);
+  border-color: var(--error);
+  color: var(--error);
+}
+
+/* ===== 狀態組件 ===== */
+.loading-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-tertiary);
+}
+
+.spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid var(--bg-hover);
+  border-top-color: var(--accent-primary);
+  border-radius: var(--radius-full);
+  animation: spin 1s linear infinite;
+  margin: 0 auto 20px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-tertiary);
+}
+
+.empty-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+/* ===== Alert 組件 ===== */
+.alert {
+  padding: 14px 16px;
+  border-radius: var(--radius-md);
+  border-left: 4px solid;
+  font-size: 13px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.alert-success {
+  background: var(--success-bg);
+  border-color: var(--success);
+  color: var(--success);
+}
+
+.alert-warning {
+  background: var(--warning-bg);
+  border-color: var(--warning);
+  color: var(--warning);
+}
+
+.alert-error {
+  background: var(--error-bg);
+  border-color: var(--error);
+  color: var(--error);
+}
+
+.alert-info {
+  background: var(--info-bg);
+  border-color: var(--info);
+  color: var(--info);
+}
+
+/* ===== 滾動條樣式 ===== */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-tertiary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(245, 158, 11, 0.3);
+  border-radius: var(--radius-sm);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(245, 158, 11, 0.5);
+}
+
+/* ===== 動畫 ===== */
+.fade-in {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.slide-up {
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script>
+// ===== 全局配置 =====
+const APP_CONFIG = {
+  version: '${CONFIG.PROJECT_VERSION}',
+  apiEndpoint: '${apiEndpoint}',
+  authenticated: ${CONFIG.POLLINATIONS_AUTH.enabled},
+  stylesCount: ${stylesCount}
+};
+
+const PRESET_SIZES = ${JSON.stringify(CONFIG.PRESET_SIZES)};
+const STYLE_PRESETS = ${JSON.stringify(CONFIG.STYLE_PRESETS)};
+const STYLE_CATEGORIES = ${JSON.stringify(CONFIG.STYLE_CATEGORIES)};
+</script>
+`;
+
+  return new Response(html + getUIScriptPart(), {
+    headers: corsHeaders({ 'Content-Type': 'text/html; charset=utf-8' })
+  });
+}
+function getUIScriptPart() {
+  return `
+<script>
+// ===== 狀態管理 =====
+let generatedImages = JSON.parse(localStorage.getItem('flux_ai_history') || '[]');
+let isGenerating = false;
+
+// ===== DOM 元素初始化 =====
+function initializeApp() {
+  updateHistoryCount();
+  renderHistoryPage();
+  setupEventListeners();
+  updatePreview();
+}
+
+// ===== 事件監聽器 =====
+function setupEventListeners() {
+  // 表單提交
+  const generateForm = document.getElementById('generateForm');
+  if (generateForm) {
+    generateForm.addEventListener('submit', handleGenerate);
+  }
+  
+  // 參數變化時更新預覽
+  ['model', 'size', 'style', 'qualityMode'].forEach(id => {
+    const element = document.getElementById(id);
+    if (element) {
+      element.addEventListener('change', updatePreview);
+    }
+  });
+  
+  // 風格變化時更新提示
+  const styleSelect = document.getElementById('style');
+  if (styleSelect) {
+    styleSelect.addEventListener('change', updateStyleInfo);
+  }
+  
+  // 清空歷史按鈕
+  const clearBtn = document.getElementById('clearBtn');
+  if (clearBtn) {
+    clearBtn.addEventListener('click', handleClearHistory);
+  }
+  
+  // 導出按鈕
+  const exportBtn = document.getElementById('exportBtn');
+  if (exportBtn) {
+    exportBtn.addEventListener('click', handleExportHistory);
+  }
+  
+  // 進階選項切換
+  const advancedToggle = document.getElementById('advancedToggle');
+  const advancedSection = document.getElementById('advancedSection');
+  if (advancedToggle && advancedSection) {
+    advancedToggle.addEventListener('click', () => {
+      advancedSection.classList.toggle('show');
+      advancedToggle.textContent = advancedSection.classList.contains('show') 
+        ? '▲ 收起進階選項' 
+        : '▼ 展開進階選項';
+    });
+  }
+}
+
+// ===== 生成圖像主函數 =====
+async function handleGenerate(e) {
+  e.preventDefault();
+  
+  if (isGenerating) return;
+  
+  const prompt = document.getElementById('prompt').value.trim();
+  if (!prompt) {
+    showAlert('error', '請輸入提示詞');
+    return;
+  }
+  
+  isGenerating = true;
+  const generateBtn = document.getElementById('generateBtn');
+  const originalText = generateBtn.innerHTML;
+  generateBtn.innerHTML = '<span>🎨</span> 生成中...';
+  generateBtn.disabled = true;
+  
+  // 顯示加載狀態
+  showLoadingState();
+  
+  try {
+    // 獲取表單參數
+    const model = document.getElementById('model').value;
+    const size = document.getElementById('size').value;
+    const sizeConfig = PRESET_SIZES[size];
+    const style = document.getElementById('style').value;
+    const qualityMode = document.getElementById('qualityMode').value;
+    const negativePrompt = document.getElementById('negativePrompt').value.trim();
+    const seed = parseInt(document.getElementById('seed').value) || -1;
+    const numOutputs = parseInt(document.getElementById('numOutputs').value) || 1;
+    const autoOptimize = document.getElementById('autoOptimize').checked;
+    const autoHD = document.getElementById('autoHD').checked;
+    
+    // 參考圖像處理
+    const referenceImagesInput = document.getElementById('referenceImages').value.trim();
+    const referenceImages = referenceImagesInput 
+      ? referenceImagesInput.split(',').map(url => url.trim()).filter(url => url)
+      : [];
+    
+    // 構建請求體
+    const requestBody = {
+      prompt: prompt,
+      model: model,
+      width: sizeConfig.width,
+      height: sizeConfig.height,
+      style: style,
+      quality_mode: qualityMode,
+      negative_prompt: negativePrompt,
+      seed: seed,
+      n: numOutputs,
+      auto_optimize: autoOptimize,
+      auto_hd: autoHD,
+      reference_images: referenceImages
+    };
+    
+    console.log('🚀 Generation request:', requestBody);
+    
+    // 發送請求
+    const response = await fetch('/_internal/generate', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(requestBody)
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error?.message || 'Generation failed');
+    }
+    
+    // 檢查返回類型
+    const contentType = response.headers.get('content-type');
+    
+    if (contentType && contentType.includes('image/')) {
+      // 單張圖片返回
+      const blob = await response.blob();
+      const imageUrl = URL.createObjectURL(blob);
+      
+      const imageData = {
+        id: Date.now(),
+        url: imageUrl,
+        prompt: prompt,
+        model: response.headers.get('X-Model') || model,
+        seed: parseInt(response.headers.get('X-Seed')) || seed,
+        width: parseInt(response.headers.get('X-Width')) || sizeConfig.width,
+        height: parseInt(response.headers.get('X-Height')) || sizeConfig.height,
+        style: style,
+        style_name: response.headers.get('X-Style-Name') || STYLE_PRESETS[style]?.name || style,
+        quality_mode: qualityMode,
+        timestamp: new Date().toISOString(),
+        generation_time: response.headers.get('X-Generation-Time') || 'N/A',
+        authenticated: response.headers.get('X-Authenticated') === 'true'
+      };
+      
+      generatedImages.unshift(imageData);
+      saveHistory();
+      renderResults([imageData]);
+      showAlert('success', '✅ 圖像生成成功！');
+      
+    } else {
+      // JSON 返回（多張圖片）
+      const data = await response.json();
+      
+      if (data.data && data.data.length > 0) {
+        const images = data.data.map((img, index) => ({
+          id: Date.now() + index,
+          url: img.image,
+          prompt: prompt,
+          model: img.model,
+          seed: img.seed,
+          width: img.width,
+          height: img.height,
+          style: style,
+          style_name: img.style_name || STYLE_PRESETS[style]?.name || style,
+          quality_mode: qualityMode,
+          timestamp: new Date().toISOString(),
+          generation_time: data.generation_time_ms ? data.generation_time_ms + 'ms' : 'N/A',
+          authenticated: img.authenticated
+        }));
+        
+        generatedImages.unshift(...images);
+        saveHistory();
+        renderResults(images);
+        showAlert('success', \`✅ 成功生成 \${images.length} 張圖像！\`);
+      } else {
+        throw new Error('No images returned');
+      }
+    }
+    
+    updateHistoryCount();
+    
+  } catch (error) {
+    console.error('❌ Generation error:', error);
+    showAlert('error', '❌ 生成失敗: ' + error.message);
+    showEmptyState();
+  } finally {
+    isGenerating = false;
+    generateBtn.innerHTML = originalText;
+    generateBtn.disabled = false;
+  }
+}
+
+// ===== 渲染結果 =====
+function renderResults(images) {
+  const resultsDiv = document.getElementById('results');
+  if (!resultsDiv) return;
+  
+  resultsDiv.innerHTML = '';
+  
+  const gallery = document.createElement('div');
+  gallery.className = 'gallery fade-in';
+  
+  images.forEach(img => {
+    const item = createGalleryItem(img);
+    gallery.appendChild(item);
+  });
+  
+  resultsDiv.appendChild(gallery);
+}
+
+// ===== 創建畫廊項目 =====
+function createGalleryItem(img) {
+  const item = document.createElement('div');
+  item.className = 'gallery-item slide-up';
+  
+  item.innerHTML = \`
+    <img src="\${img.url}" alt="Generated image" class="gallery-image" onclick="openImageModal('\${img.url}')">
+    <div class="gallery-info">
+      <div class="gallery-meta">
+        <span class="meta-badge model">📦 \${img.model}</span>
+        <span class="meta-badge seed">🎲 \${img.seed}</span>
+        <span class="meta-badge style">🎨 \${img.style_name}</span>
+      </div>
+      <div class="gallery-meta">
+        <span class="meta-badge">📐 \${img.width}x\${img.height}</span>
+        <span class="meta-badge">⏱️ \${img.generation_time}</span>
+        \${img.authenticated ? '<span class="meta-badge" style="background:var(--success-bg);color:var(--success)">🔐 已認證</span>' : ''}
+      </div>
+      <div class="gallery-actions">
+        <button class="action-btn" onclick="downloadImage('\${img.url}', '\${img.seed}')">
+          <span>💾</span> 下載
+        </button>
+        <button class="action-btn" onclick="copyPrompt('\${escapeHtml(img.prompt)}')">
+          <span>📋</span> 複製提示詞
+        </button>
+        <button class="action-btn delete" onclick="deleteImage(\${img.id})">
+          <span>🗑️</span> 刪除
+        </button>
+      </div>
+    </div>
+  \`;
+  
+  return item;
+}
+
+// ===== 圖片模態框 =====
+function openImageModal(imageUrl) {
+  const modal = document.createElement('div');
+  modal.className = 'modal show';
+  modal.innerHTML = \`
+    <div class="modal-overlay" onclick="closeImageModal()"></div>
+    <div class="modal-content">
+      <button class="modal-close" onclick="closeImageModal()">✕</button>
+      <img src="\${imageUrl}" alt="Full size image" style="max-width:100%;max-height:90vh;border-radius:12px;">
+    </div>
+  \`;
+  
+  document.body.appendChild(modal);
+  document.body.style.overflow = 'hidden';
+}
+
+function closeImageModal() {
+  const modal = document.querySelector('.modal');
+  if (modal) {
+    modal.remove();
+    document.body.style.overflow = 'auto';
+  }
+}
+
+// ===== 下載圖片 =====
+async function downloadImage(url, seed) {
+  try {
+    const response = await fetch(url);
+    const blob = await response.blob();
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = \`flux-ai-\${seed}-\${Date.now()}.png\`;
+    link.click();
+    showAlert('success', '✅ 圖片下載中...');
+  } catch (error) {
+    console.error('Download error:', error);
+    showAlert('error', '❌ 下載失敗');
+  }
+}
+
+// ===== 複製提示詞 =====
+function copyPrompt(prompt) {
+  const textarea = document.createElement('textarea');
+  textarea.value = prompt;
+  document.body.appendChild(textarea);
+  textarea.select();
+  document.execCommand('copy');
+  document.body.removeChild(textarea);
+  showAlert('success', '✅ 提示詞已複製到剪貼板');
+}
+
+// ===== 刪除圖片 =====
+function deleteImage(id) {
+  if (!confirm('確定要刪除這張圖片嗎？')) return;
+  
+  generatedImages = generatedImages.filter(img => img.id !== id);
+  saveHistory();
+  updateHistoryCount();
+  renderHistoryPage();
+  
+  // 如果當前頁面是生成頁面，重新渲染
+  const resultsDiv = document.getElementById('results');
+  if (resultsDiv) {
+    const currentImages = generatedImages.slice(0, 4);
+    if (currentImages.length > 0) {
+      renderResults(currentImages);
+    } else {
+      showEmptyState();
+    }
+  }
+  
+  showAlert('success', '✅ 圖片已刪除');
+}
+
+// ===== 清空歷史 =====
+function handleClearHistory() {
+  if (!confirm('確定要清空所有歷史記錄嗎？此操作無法撤銷。')) return;
+  
+  generatedImages = [];
+  saveHistory();
+  updateHistoryCount();
+  renderHistoryPage();
+  showAlert('success', '✅ 歷史記錄已清空');
+}
+
+// ===== 導出歷史 =====
+function handleExportHistory() {
+  const data = {
+    version: APP_CONFIG.version,
+    exported_at: new Date().toISOString(),
+    images: generatedImages.map(img => ({
+      prompt: img.prompt,
+      model: img.model,
+      seed: img.seed,
+      width: img.width,
+      height: img.height,
+      style: img.style,
+      style_name: img.style_name,
+      quality_mode: img.quality_mode,
+      timestamp: img.timestamp
+    }))
+  };
+  
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = \`flux-ai-history-\${Date.now()}.json\`;
+  link.click();
+  showAlert('success', '✅ 歷史記錄已導出');
+}
+
+// ===== 渲染歷史頁面 =====
+function renderHistoryPage() {
+  const historyList = document.getElementById('historyList');
+  if (!historyList) return;
+  
+  if (generatedImages.length === 0) {
+    historyList.innerHTML = \`
+      <div class="empty-state">
+        <div class="empty-icon">📚</div>
+        <p style="font-size:16px;margin-bottom:10px">暫無歷史記錄</p>
+        <p style="font-size:14px">生成的圖像將自動保存在這裡</p>
+      </div>
+    \`;
+    return;
+  }
+  
+  const gallery = document.createElement('div');
+  gallery.className = 'gallery';
+  
+  generatedImages.forEach(img => {
+    const item = createGalleryItem(img);
+    gallery.appendChild(item);
+  });
+  
+  historyList.innerHTML = '';
+  historyList.appendChild(gallery);
+  
+  // 更新統計信息
+  updateHistoryStats();
+}
+
+// ===== 更新歷史統計 =====
+function updateHistoryStats() {
+  const totalEl = document.getElementById('historyTotal');
+  const sizeEl = document.getElementById('storageSize');
+  const styleEl = document.getElementById('recentStyle');
+  
+  if (totalEl) totalEl.textContent = generatedImages.length;
+  
+  if (sizeEl) {
+    const size = new Blob([JSON.stringify(generatedImages)]).size;
+    const sizeKB = (size / 1024).toFixed(2);
+    sizeEl.textContent = sizeKB + ' KB';
+  }
+  
+  if (styleEl && generatedImages.length > 0) {
+    styleEl.textContent = generatedImages[0].style_name || '-';
+  }
+}
+
+// ===== 更新歷史計數 =====
+function updateHistoryCount() {
+  const countEl = document.getElementById('historyCount');
+  if (countEl) {
+    countEl.textContent = generatedImages.length;
+  }
+}
+
+// ===== 保存歷史到 localStorage =====
+function saveHistory() {
+  try {
+    // 只保存必要信息，不保存 base64 圖片數據
+    const historyToSave = generatedImages.map(img => ({
+      ...img,
+      url: img.url.startsWith('blob:') ? '' : img.url // 清除 blob URLs
+    }));
+    localStorage.setItem('flux_ai_history', JSON.stringify(historyToSave));
+  } catch (error) {
+    console.error('Save history error:', error);
+  }
+}
+
+// ===== 更新預覽 =====
+function updatePreview() {
+  const model = document.getElementById('model')?.value || 'zimage';
+  const size = document.getElementById('size')?.value || 'square-1k';
+  const style = document.getElementById('style')?.value || 'none';
+  
+  const sizeConfig = PRESET_SIZES[size];
+  const modelName = document.getElementById('model')?.selectedOptions[0]?.text || model;
+  const styleName = STYLE_PRESETS[style]?.name || '無風格';
+  
+  const previewModel = document.getElementById('previewModel');
+  const previewSize = document.getElementById('previewSize');
+  const previewStyle = document.getElementById('previewStyle');
+  
+  if (previewModel) previewModel.textContent = modelName;
+  if (previewSize) previewSize.textContent = \`\${sizeConfig.width}x\${sizeConfig.height} (\${sizeConfig.name})\`;
+  if (previewStyle) previewStyle.textContent = styleName;
+}
+
+// ===== 更新風格信息 =====
+function updateStyleInfo() {
+  const style = document.getElementById('style')?.value || 'none';
+  const styleConfig = STYLE_PRESETS[style];
+  
+  const currentStyleName = document.getElementById('currentStyleName');
+  const styleDescription = document.getElementById('styleDescription');
+  
+  if (currentStyleName && styleConfig) {
+    currentStyleName.textContent = styleConfig.icon + ' ' + styleConfig.name;
+  }
+  
+  if (styleDescription && styleConfig) {
+    styleDescription.textContent = styleConfig.description || '使用原始提示詞';
+  }
+}
+
+// ===== 顯示加載狀態 =====
+function showLoadingState() {
+  const resultsDiv = document.getElementById('results');
+  if (!resultsDiv) return;
+  
+  resultsDiv.innerHTML = \`
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <p style="font-size:16px;margin-bottom:8px">🎨 AI 正在創作中...</p>
+      <p style="font-size:14px">這可能需要幾秒到幾十秒</p>
+    </div>
+  \`;
+}
+
+// ===== 顯示空狀態 =====
+function showEmptyState() {
+  const resultsDiv = document.getElementById('results');
+  if (!resultsDiv) return;
+  
+  resultsDiv.innerHTML = \`
+    <div class="empty-state">
+      <div class="empty-icon">🖼️</div>
+      <p style="font-size:16px;margin-bottom:10px">尚未生成任何圖像</p>
+      <p style="font-size:14px">填寫左側參數並輸入提示詞後點擊生成</p>
+    </div>
+  \`;
+}
+
+// ===== 顯示提示信息 =====
+function showAlert(type, message) {
+  const alertDiv = document.createElement('div');
+  alertDiv.className = \`alert alert-\${type} fade-in\`;
+  alertDiv.style.cssText = 'position:fixed;top:80px;right:24px;z-index:1000;min-width:300px;max-width:500px;';
+  
+  const icons = {
+    success: '✅',
+    error: '❌',
+    warning: '⚠️',
+    info: 'ℹ️'
+  };
+  
+  alertDiv.innerHTML = \`<span>\${icons[type] || ''}</span><span>\${message}</span>\`;
+  document.body.appendChild(alertDiv);
+  
+  setTimeout(() => {
+    alertDiv.style.opacity = '0';
+    setTimeout(() => alertDiv.remove(), 300);
+  }, 3000);
+}
+
+// ===== HTML 轉義 =====
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+// ===== 頁面初始化 =====
+document.addEventListener('DOMContentLoaded', initializeApp);
+</script>
+`;
+}
+function getUIScriptPart() {
+  return `
+<script>
+// ===== 前面的 JavaScript 代碼（已在第六部分）=====
+// ... (這裡包含所有之前的 JavaScript 函數)
+
+// ===== 狀態管理 =====
+let generatedImages = JSON.parse(localStorage.getItem('flux_ai_history') || '[]');
+let isGenerating = false;
+
+// ===== DOM 元素初始化 =====
+function initializeApp() {
+  updateHistoryCount();
+  renderHistoryPage();
+  setupEventListeners();
+  updatePreview();
+  updateStyleInfo();
+}
+
+// ===== 事件監聽器 =====
+function setupEventListeners() {
+  const generateForm = document.getElementById('generateForm');
+  if (generateForm) {
+    generateForm.addEventListener('submit', handleGenerate);
+  }
+  
+  ['model', 'size', 'style', 'qualityMode'].forEach(id => {
+    const element = document.getElementById(id);
+    if (element) {
+      element.addEventListener('change', updatePreview);
+    }
+  });
+  
+  const styleSelect = document.getElementById('style');
+  if (styleSelect) {
+    styleSelect.addEventListener('change', updateStyleInfo);
+  }
+  
+  const clearBtn = document.getElementById('clearBtn');
+  if (clearBtn) {
+    clearBtn.addEventListener('click', handleClearHistory);
+  }
+  
+  const exportBtn = document.getElementById('exportBtn');
+  if (exportBtn) {
+    exportBtn.addEventListener('click', handleExportHistory);
+  }
+  
+  const advancedToggle = document.getElementById('advancedToggle');
+  const advancedSection = document.getElementById('advancedSection');
+  if (advancedToggle && advancedSection) {
+    advancedToggle.addEventListener('click', () => {
+      advancedSection.classList.toggle('show');
+      advancedToggle.textContent = advancedSection.classList.contains('show') 
+        ? '▲ 收起進階選項' 
+        : '▼ 展開進階選項';
+    });
+  }
+  
+  // Tab 切換
+  const tabButtons = document.querySelectorAll('[data-tab]');
+  tabButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tab = btn.getAttribute('data-tab');
+      switchTab(tab);
+    });
+  });
+}
+
+// ===== Tab 切換函數 =====
+function switchTab(tabName) {
+  // 更新按鈕狀態
+  document.querySelectorAll('[data-tab]').forEach(btn => {
+    if (btn.getAttribute('data-tab') === tabName) {
+      btn.classList.add('active');
+    } else {
+      btn.classList.remove('active');
+    }
+  });
+  
+  // 更新頁面顯示
+  document.querySelectorAll('.tab-content').forEach(content => {
+    if (content.id === tabName + 'Page') {
+      content.style.display = 'block';
+    } else {
+      content.style.display = 'none';
+    }
+  });
+  
+  // 如果切換到歷史頁面，刷新顯示
+  if (tabName === 'history') {
+    renderHistoryPage();
+  }
+}
+
+// ===== 生成圖像主函數 =====
+async function handleGenerate(e) {
+  e.preventDefault();
+  
+  if (isGenerating) return;
+  
+  const prompt = document.getElementById('prompt').value.trim();
+  if (!prompt) {
+    showAlert('error', '❌ 請輸入提示詞');
+    return;
+  }
+  
+  isGenerating = true;
+  const generateBtn = document.getElementById('generateBtn');
+  const originalText = generateBtn.innerHTML;
+  generateBtn.innerHTML = '<span>⏳</span> 生成中...';
+  generateBtn.disabled = true;
+  
+  showLoadingState();
+  
+  try {
+    const model = document.getElementById('model').value;
+    const size = document.getElementById('size').value;
+    const sizeConfig = PRESET_SIZES[size];
+    const style = document.getElementById('style').value;
+    const qualityMode = document.getElementById('qualityMode').value;
+    const negativePrompt = document.getElementById('negativePrompt').value.trim();
+    const seed = parseInt(document.getElementById('seed').value) || -1;
+    const numOutputs = parseInt(document.getElementById('numOutputs').value) || 1;
+    const autoOptimize = document.getElementById('autoOptimize').checked;
+    const autoHD = document.getElementById('autoHD').checked;
+    
+    const referenceImagesInput = document.getElementById('referenceImages').value.trim();
+    const referenceImages = referenceImagesInput 
+      ? referenceImagesInput.split(',').map(url => url.trim()).filter(url => url)
+      : [];
+    
+    const requestBody = {
+      prompt: prompt,
+      model: model,
+      width: sizeConfig.width,
+      height: sizeConfig.height,
+      style: style,
+      quality_mode: qualityMode,
+      negative_prompt: negativePrompt,
+      seed: seed,
+      n: numOutputs,
+      auto_optimize: autoOptimize,
+      auto_hd: autoHD,
+      reference_images: referenceImages
+    };
+    
+    console.log('🚀 Generation request:', requestBody);
+    
+    const response = await fetch('/_internal/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(requestBody)
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error?.message || 'Generation failed');
+    }
+    
+    const contentType = response.headers.get('content-type');
+    
+    if (contentType && contentType.includes('image/')) {
+      const blob = await response.blob();
+      const imageUrl = URL.createObjectURL(blob);
+      
+      const imageData = {
+        id: Date.now(),
+        url: imageUrl,
+        prompt: prompt,
+        model: response.headers.get('X-Model') || model,
+        seed: parseInt(response.headers.get('X-Seed')) || seed,
+        width: parseInt(response.headers.get('X-Width')) || sizeConfig.width,
+        height: parseInt(response.headers.get('X-Height')) || sizeConfig.height,
+        style: style,
+        style_name: response.headers.get('X-Style-Name') || STYLE_PRESETS[style]?.name || style,
+        quality_mode: qualityMode,
+        timestamp: new Date().toISOString(),
+        generation_time: response.headers.get('X-Generation-Time') || 'N/A',
+        authenticated: response.headers.get('X-Authenticated') === 'true'
+      };
+      
+      generatedImages.unshift(imageData);
+      saveHistory();
+      renderResults([imageData]);
+      showAlert('success', '✅ 圖像生成成功！');
+      
+    } else {
+      const data = await response.json();
+      
+      if (data.data && data.data.length > 0) {
+        const images = data.data.map((img, index) => ({
+          id: Date.now() + index,
+          url: img.image,
+          prompt: prompt,
+          model: img.model,
+          seed: img.seed,
+          width: img.width,
+          height: img.height,
+          style: style,
+          style_name: img.style_name || STYLE_PRESETS[style]?.name || style,
+          quality_mode: qualityMode,
+          timestamp: new Date().toISOString(),
+          generation_time: data.generation_time_ms ? data.generation_time_ms + 'ms' : 'N/A',
+          authenticated: img.authenticated
+        }));
+        
+        generatedImages.unshift(...images);
+        saveHistory();
+        renderResults(images);
+        showAlert('success', \`✅ 成功生成 \${images.length} 張圖像！\`);
+      } else {
+        throw new Error('No images returned');
+      }
+    }
+    
+    updateHistoryCount();
+    
+  } catch (error) {
+    console.error('❌ Generation error:', error);
+    showAlert('error', '❌ 生成失敗: ' + error.message);
+    showEmptyState();
+  } finally {
+    isGenerating = false;
+    generateBtn.innerHTML = originalText;
+    generateBtn.disabled = false;
+  }
+}
+
+// ===== 渲染結果 =====
+function renderResults(images) {
+  const resultsDiv = document.getElementById('results');
+  if (!resultsDiv) return;
+  
+  resultsDiv.innerHTML = '';
+  const gallery = document.createElement('div');
+  gallery.className = 'gallery fade-in';
+  
+  images.forEach(img => {
+    const item = createGalleryItem(img);
+    gallery.appendChild(item);
+  });
+  
+  resultsDiv.appendChild(gallery);
+}
+
+// ===== 創建畫廊項目 =====
+function createGalleryItem(img) {
+  const item = document.createElement('div');
+  item.className = 'gallery-item slide-up';
+  
+  item.innerHTML = \`
+    <img src="\${img.url}" alt="Generated image" class="gallery-image" onclick="openImageModal('\${img.url}')">
+    <div class="gallery-info">
+      <div class="gallery-meta">
+        <span class="meta-badge model">📦 \${img.model}</span>
+        <span class="meta-badge seed">🎲 \${img.seed}</span>
+        <span class="meta-badge style">🎨 \${img.style_name}</span>
+      </div>
+      <div class="gallery-meta">
+        <span class="meta-badge">📐 \${img.width}x\${img.height}</span>
+        <span class="meta-badge">⏱️ \${img.generation_time}</span>
+        \${img.authenticated ? '<span class="meta-badge" style="background:var(--success-bg);color:var(--success)">🔐 已認證</span>' : ''}
+      </div>
+      <div class="gallery-actions">
+        <button class="action-btn" onclick="downloadImage('\${img.url}', '\${img.seed}')">
+          <span>💾</span> 下載
+        </button>
+        <button class="action-btn" onclick="copyPrompt('\${escapeHtml(img.prompt)}')">
+          <span>📋</span> 複製
+        </button>
+        <button class="action-btn delete" onclick="deleteImage(\${img.id})">
+          <span>🗑️</span> 刪除
+        </button>
+      </div>
+    </div>
+  \`;
+  
+  return item;
+}
+
+// ===== 工具函數 =====
+function openImageModal(imageUrl) {
+  const modal = document.createElement('div');
+  modal.id = 'imageModal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.9);z-index:1000;display:flex;align-items:center;justify-content:center;animation:fadeIn 0.3s';
+  modal.innerHTML = \`
+    <button onclick="closeImageModal()" style="position:absolute;top:20px;right:20px;width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:white;font-size:24px;cursor:pointer;backdrop-filter:blur(10px);transition:all 0.3s" onmouseover="this.style.transform='rotate(90deg)'" onmouseout="this.style.transform='rotate(0deg)'">✕</button>
+    <img src="\${imageUrl}" style="max-width:90%;max-height:90vh;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,0.5)">
+  \`;
+  document.body.appendChild(modal);
+  document.body.style.overflow = 'hidden';
+}
+
+function closeImageModal() {
+  const modal = document.getElementById('imageModal');
+  if (modal) {
+    modal.remove();
+    document.body.style.overflow = 'auto';
+  }
+}
+
+async function downloadImage(url, seed) {
+  try {
+    const response = await fetch(url);
+    const blob = await response.blob();
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = \`flux-ai-\${seed}-\${Date.now()}.png\`;
+    link.click();
+    showAlert('success', '✅ 圖片下載中...');
+  } catch (error) {
+    showAlert('error', '❌ 下載失敗');
+  }
+}
+
+function copyPrompt(prompt) {
+  navigator.clipboard.writeText(prompt).then(() => {
+    showAlert('success', '✅ 提示詞已複製');
+  }).catch(() => {
+    showAlert('error', '❌ 複製失敗');
+  });
+}
+
+function deleteImage(id) {
+  if (!confirm('確定要刪除這張圖片嗎？')) return;
+  
+  generatedImages = generatedImages.filter(img => img.id !== id);
+  saveHistory();
+  updateHistoryCount();
+  renderHistoryPage();
+  
+  const resultsDiv = document.getElementById('results');
+  if (resultsDiv) {
+    const currentImages = generatedImages.slice(0, 4);
+    if (currentImages.length > 0) {
+      renderResults(currentImages);
+    } else {
+      showEmptyState();
+    }
+  }
+  
+  showAlert('success', '✅ 圖片已刪除');
+}
+
+function handleClearHistory() {
+  if (!confirm('確定要清空所有歷史記錄嗎？')) return;
+  
+  generatedImages = [];
+  saveHistory();
+  updateHistoryCount();
+  renderHistoryPage();
+  showAlert('success', '✅ 歷史記錄已清空');
+}
+
+function handleExportHistory() {
+  const data = {
+    version: APP_CONFIG.version,
+    exported_at: new Date().toISOString(),
+    images: generatedImages.map(img => ({
+      prompt: img.prompt,
+      model: img.model,
+      seed: img.seed,
+      width: img.width,
+      height: img.height,
+      style: img.style,
+      style_name: img.style_name,
+      quality_mode: img.quality_mode,
+      timestamp: img.timestamp
+    }))
+  };
+  
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = \`flux-ai-history-\${Date.now()}.json\`;
+  link.click();
+  showAlert('success', '✅ 歷史記錄已導出');
+}
+
+function renderHistoryPage() {
+  const historyList = document.getElementById('historyList');
+  if (!historyList) return;
+  
+  if (generatedImages.length === 0) {
+    historyList.innerHTML = \`
+      <div class="empty-state">
+        <div class="empty-icon">📚</div>
+        <p style="font-size:16px;margin-bottom:10px">暫無歷史記錄</p>
+        <p style="font-size:14px">生成的圖像將自動保存在這裡</p>
+      </div>
+    \`;
+    return;
+  }
+  
+  const gallery = document.createElement('div');
+  gallery.className = 'gallery';
+  
+  generatedImages.forEach(img => {
+    gallery.appendChild(createGalleryItem(img));
+  });
+  
+  historyList.innerHTML = '';
+  historyList.appendChild(gallery);
+  updateHistoryStats();
+}
+
+function updateHistoryStats() {
+  const totalEl = document.getElementById('historyTotal');
+  const sizeEl = document.getElementById('storageSize');
+  const styleEl = document.getElementById('recentStyle');
+  
+  if (totalEl) totalEl.textContent = generatedImages.length;
+  
+  if (sizeEl) {
+    const size = new Blob([JSON.stringify(generatedImages)]).size;
+    sizeEl.textContent = (size / 1024).toFixed(2) + ' KB';
+  }
+  
+  if (styleEl && generatedImages.length > 0) {
+    styleEl.textContent = generatedImages[0].style_name || '-';
+  }
+}
+
+function updateHistoryCount() {
+  const countEl = document.getElementById('historyCount');
+  if (countEl) {
+    countEl.textContent = generatedImages.length;
+  }
+}
+
+function saveHistory() {
+  try {
+    const historyToSave = generatedImages.map(img => ({
+      ...img,
+      url: img.url.startsWith('blob:') ? '' : img.url
+    }));
+    localStorage.setItem('flux_ai_history', JSON.stringify(historyToSave));
+  } catch (error) {
+    console.error('Save error:', error);
+  }
+}
+
+function updatePreview() {
+  const model = document.getElementById('model')?.value || 'zimage';
+  const size = document.getElementById('size')?.value || 'square-1k';
+  const style = document.getElementById('style')?.value || 'none';
+  
+  const sizeConfig = PRESET_SIZES[size];
+  const modelName = document.getElementById('model')?.selectedOptions[0]?.text || model;
+  const styleName = STYLE_PRESETS[style]?.name || '無風格';
+  
+  const previewModel = document.getElementById('previewModel');
+  const previewSize = document.getElementById('previewSize');
+  const previewStyle = document.getElementById('previewStyle');
+  
+  if (previewModel) previewModel.textContent = modelName;
+  if (previewSize) previewSize.textContent = \`\${sizeConfig.width}x\${sizeConfig.height} (\${sizeConfig.name})\`;
+  if (previewStyle) previewStyle.textContent = styleName;
+}
+
+function updateStyleInfo() {
+  const style = document.getElementById('style')?.value || 'none';
+  const styleConfig = STYLE_PRESETS[style];
+  
+  const currentStyleName = document.getElementById('currentStyleName');
+  const styleDescription = document.getElementById('styleDescription');
+  
+  if (currentStyleName && styleConfig) {
+    currentStyleName.textContent = styleConfig.icon + ' ' + styleConfig.name;
+  }
+  
+  if (styleDescription && styleConfig) {
+    styleDescription.textContent = styleConfig.description || '使用原始提示詞';
+  }
+  
+  updatePreview();
+}
+
+function showLoadingState() {
+  const resultsDiv = document.getElementById('results');
+  if (!resultsDiv) return;
+  
+  resultsDiv.innerHTML = \`
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <p style="font-size:16px;margin-bottom:8px">🎨 AI 正在創作中...</p>
+      <p style="font-size:14px">這可能需要幾秒到幾十秒</p>
+    </div>
+  \`;
+}
+
+function showEmptyState() {
+  const resultsDiv = document.getElementById('results');
+  if (!resultsDiv) return;
+  
+  resultsDiv.innerHTML = \`
+    <div class="empty-state">
+      <div class="empty-icon">🖼️</div>
+      <p style="font-size:16px;margin-bottom:10px">尚未生成任何圖像</p>
+      <p style="font-size:14px">填寫參數並輸入提示詞後點擊生成</p>
+    </div>
+  \`;
+}
+
+function showAlert(type, message) {
+  const alertDiv = document.createElement('div');
+  alertDiv.className = \`alert alert-\${type} fade-in\`;
+  alertDiv.style.cssText = 'position:fixed;top:80px;right:24px;z-index:1000;min-width:300px;max-width:500px;box-shadow:var(--shadow-lg)';
+  
+  const icons = { success: '✅', error: '❌', warning: '⚠️', info: 'ℹ️' };
+  alertDiv.innerHTML = \`<span>\${icons[type]}</span><span>\${message}</span>\`;
+  document.body.appendChild(alertDiv);
+  
+  setTimeout(() => {
+    alertDiv.style.opacity = '0';
+    setTimeout(() => alertDiv.remove(), 300);
+  }, 3000);
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+document.addEventListener('DOMContentLoaded', initializeApp);
+</script>
+
+<!-- HTML 主體結構 -->
+<div class="app-container">
+  <!-- 頂部導航 -->
+  <div class="top-header">
+    <div class="header-left">
+      <div class="logo">
+        🎨 Flux AI Pro
+        <span class="badge badge-version">v${CONFIG.PROJECT_VERSION}</span>
+        <span class="badge badge-new">Radix UI</span>
+        <span class="badge badge-styles">${stylesCount} 風格</span>
+      </div>
+      <div class="api-status">
+        <div class="api-status-line">${authStatus}</div>
+        <div class="api-endpoint">📡 ${apiEndpoint}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab 導航 -->
+  <div style="display:flex;background:var(--bg-tertiary);border-bottom:1px solid var(--border-primary)">
+    <button data-tab="generate" class="active" style="all:unset;padding:16px 24px;cursor:pointer;font-size:14px;font-weight:600;color:var(--text-tertiary);border-bottom:2px solid transparent;transition:var(--transition);display:flex;align-items:center;gap:8px">
+      <span>🎨</span> 生成圖像
+    </button>
+    <button data-tab="history" style="all:unset;padding:16px 24px;cursor:pointer;font-size:14px;font-weight:600;color:var(--text-tertiary);border-bottom:2px solid transparent;transition:var(--transition);display:flex;align-items:center;gap:8px">
+      <span>📚</span> 歷史記錄 <span id="historyCount" style="background:var(--warning-bg);color:var(--warning);padding:2px 8px;border-radius:10px;font-size:11px">0</span>
+    </button>
+  </div>
+
+  <!-- 內容區域 -->
+  <div class="content-wrapper">
+    <!-- 生成頁面 -->
+    <div id="generatePage" class="tab-content">
+      <div class="generate-layout">
+        <!-- 左側面板 -->
+        <div class="panel panel-left">
+          <div class="section-title">⚙️ 生成參數</div>
+          <form id="generateForm">
+            <div class="form-group">
+              <label class="form-label">模型選擇</label>
+              <select id="model" class="form-select">
+                <optgroup label="⚡ Z-Image 系列">
+                  <option value="zimage" selected>Z-Image Turbo ⚡</option>
+                </optgroup>
+                <optgroup label="🎨 Flux 系列">
+                  <option value="flux">Flux 標準版</option>
+                  <option value="turbo">Flux Turbo ⚡</option>
+                </optgroup>
+                <optgroup label="🖼️ Kontext 系列">
+                  <option value="kontext">Kontext 🎨 (圖生圖)</option>
+                </optgroup>
+              </select>
+              <div class="form-hint">💰 價格: Z-Image (0.0002) | Flux (0.00012) | Turbo (0.0003) | Kontext (0.04)</div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">尺寸預設</label>
+              <select id="size" class="form-select">
+                <option value="square-1k" selected>方形 1024x1024</option>
+                <option value="square-1.5k">方形 1536x1536</option>
+                <option value="square-2k">方形 2048x2048</option>
+                <option value="portrait-9-16-hd">豎屏 1080x1920</option>
+                <option value="landscape-16-9-hd">橫屏 1920x1080</option>
+                <option value="instagram-square">Instagram 方形</option>
+                <option value="wallpaper-fhd">桌布 Full HD</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">藝術風格 🎨</label>
+              <select id="style" class="form-select">
+                ${styleOptionsHTML}
+              </select>
+              <div class="form-hint info">✨ ${stylesCount} 種風格可選</div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">質量模式</label>
+              <select id="qualityMode" class="form-select">
+                <option value="economy">經濟模式 (快速)</option>
+                <option value="standard" selected>標準模式 (平衡)</option>
+                <option value="ultra">超高清模式 (極致)</option>
+              </select>
+            </div>
+
+            <div style="margin:20px 0">
+              <a id="advancedToggle" style="color:var(--info);font-size:13px;cursor:pointer;text-decoration:underline">▼ 展開進階選項</a>
+            </div>
+
+            <div id="advancedSection" class="advanced-section">
+              <div class="form-group">
+                <label class="form-label">Seed (-1 = 隨機)</label>
+                <input type="number" id="seed" class="form-input" value="-1" min="-1" max="999999">
+              </div>
+              <div class="form-group">
+                <label class="form-label">生成數量 (1-4)</label>
+                <input type="number" id="numOutputs" class="form-input" value="1" min="1" max="4">
+              </div>
+              <div class="form-group">
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+                  <input type="checkbox" id="autoOptimize" checked> 
+                  <span class="form-label" style="margin:0">自動優化參數</span>
+                </label>
+              </div>
+              <div class="form-group">
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+                  <input type="checkbox" id="autoHD" checked> 
+                  <span class="form-label" style="margin:0">自動HD增強</span>
+                </label>
+              </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary" id="generateBtn">
+              <span>🎨</span> 開始生成
+            </button>
+          </form>
+        </div>
+
+        <!-- 中間面板 -->
+        <div class="panel panel-center">
+          <div class="section-title">🖼️ 生成結果</div>
+          <div id="results">
+            <div class="empty-state">
+              <div class="empty-icon">🖼️</div>
+              <p style="font-size:16px;margin-bottom:10px">尚未生成任何圖像</p>
+              <p style="font-size:14px">填寫參數並輸入提示詞後點擊生成</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- 右側面板 -->
+        <div class="panel panel-right">
+          <div class="section-title">💬 提示詞</div>
+          
+          <div class="form-group">
+            <label class="form-label">正面提示詞</label>
+            <textarea id="prompt" class="form-textarea" placeholder="描述你想生成的圖像...
+
+例如：
+• A beautiful sunset over mountains
+• 一隻可愛的貓咪在花園裡玩耍
+• Cyberpunk city at night" required></textarea>
+            <div class="form-hint success">✅ 支持中文自動翻譯</div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">負面提示詞 (可選)</label>
+            <textarea id="negativePrompt" class="form-textarea" rows="4" placeholder="描述不想要的內容...
+
+例如：
+• blurry, low quality
+• ugly, deformed"></textarea>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">參考圖像 URL (可選)</label>
+            <textarea id="referenceImages" class="form-textarea" rows="3" placeholder="多張圖片用逗號分隔
+
+https://example.com/image1.jpg"></textarea>
+            <div class="form-hint info">📌 僅 Kontext 模型支持</div>
+          </div>
+
+          <div class="alert alert-info">
+            <span>🎨</span>
+            <div>
+              <strong>當前風格</strong><br>
+              <span id="currentStyleName">無風格</span><br>
+              <span id="styleDescription" style="font-size:11px;opacity:0.8">使用原始提示詞</span>
+            </div>
+          </div>
+
+          <div class="section-title" style="margin-top:25px">📋 配置預覽</div>
+          <div style="background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-md);padding:12px;margin-bottom:12px">
+            <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">模型</div>
+            <div id="previewModel" style="color:var(--text-secondary);font-size:13px">Z-Image Turbo</div>
+          </div>
+          <div style="background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-md);padding:12px;margin-bottom:12px">
+            <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">尺寸</div>
+            <div id="previewSize" style="color:var(--text-secondary);font-size:13px">1024x1024</div>
+          </div>
+          <div style="background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-md);padding:12px">
+            <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">風格</div>
+            <div id="previewStyle" style="color:var(--text-secondary);font-size:13px">無風格</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 歷史頁面 -->
+    <div id="historyPage" class="tab-content" style="display:none;padding:24px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;padding:20px;background:var(--bg-tertiary);border-radius:var(--radius-lg)">
+        <div style="display:flex;gap:30px">
+          <div>
+            <div style="font-size:12px;color:var(--text-muted)">📊 總記錄數</div>
+            <div id="historyTotal" style="font-size:24px;font-weight:700;color:var(--accent-primary)">0</div>
+          </div>
+          <div>
+            <div style="font-size:12px;color:var(--text-muted)">💾 存儲空間</div>
+            <div id="storageSize" style="font-size:24px;font-weight:700;color:var(--accent-primary)">0 KB</div>
+          </div>
+          <div>
+            <div style="font-size:12px;color:var(--text-muted)">🎨 最近風格</div>
+            <div id="recentStyle" style="font-size:16px;font-weight:700;color:var(--accent-primary)">-</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:12px">
+          <button id="exportBtn" class="btn btn-secondary" style="width:auto;padding:10px 20px">📥 導出</button>
+          <button id="clearBtn" class="btn btn-danger" style="width:auto;padding:10px 20px">🗑️ 清空</button>
+        </div>
+      </div>
+      <div id="historyList"></div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>`;
+}
